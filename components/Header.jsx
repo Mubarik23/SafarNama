@@ -75,8 +75,66 @@ export default function Header() {
           >
             <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
           </button>
+
+          {/* Mobile Hamburger Toggle */}
+          <button
+            className="action-btn mobile-menu-toggle-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            title="Toggle Navigation Menu"
+            aria-label="Toggle navigation menu"
+          >
+            <i className={`fa-solid ${mobileMenuOpen ? 'fa-xmark' : 'fa-bars'}`}></i>
+          </button>
         </div>
       </div>
+
+      {/* Mobile Navigation Overlay & Drawer */}
+      <div
+        className={`mobile-nav-overlay ${mobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      ></div>
+      <aside className={`mobile-nav-drawer ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="drawer-header">
+          <Link href="/" className="header-brand" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none' }}>
+            <div className="brand-logo-icon">
+              <i className="fa-solid fa-mountain-sun"></i>
+            </div>
+            <div className="brand-text">
+              <div className="brand-name">
+                SafarNama <span className="brand-badge-pk">PK 🇵🇰</span>
+              </div>
+              <div className="brand-tagline">Next.js + Supabase Ecosystem</div>
+            </div>
+          </Link>
+          <button className="drawer-close-btn" onClick={() => setMobileMenuOpen(false)} aria-label="Close menu">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="drawer-nav-list">
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`drawer-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <i className={`fa-solid ${link.icon}`}></i>
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="drawer-footer">
+          <button className="action-btn drawer-theme-btn" onClick={toggleTheme} title="Toggle Dark/Light Mode">
+            <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+        </div>
+      </aside>
     </header>
   );
 }

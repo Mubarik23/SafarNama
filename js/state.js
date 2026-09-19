@@ -23,7 +23,7 @@ const STORAGE_KEYS = {
   WISHLIST: 'safarnama_wishlist_v1',
   USER: 'safarnama_user_v1',
   CURRENCY: 'safarnama_currency_v1',
-  THEME: 'safarnama_theme_v1',
+  THEME: 'safarnama_theme_v2',
   NOTIFICATIONS: 'safarnama_notifications_v1'
 };
 
@@ -100,7 +100,13 @@ class StateManager {
   constructor() {
     this.subscribers = new Map();
     this.destinations = this.load(STORAGE_KEYS.DESTINATIONS, INITIAL_DESTINATIONS);
+    INITIAL_DESTINATIONS.forEach(id => {
+      if (!this.destinations.some(d => d.id === id.id)) this.destinations.push(id);
+    });
     this.tours = this.load(STORAGE_KEYS.TOURS, INITIAL_TOURS);
+    INITIAL_TOURS.forEach(it => {
+      if (!this.tours.some(t => t.id === it.id)) this.tours.push(it);
+    });
     // Merge updated hotel coordinates from initial data if missing in cache
     const loadedHotels = this.load(STORAGE_KEYS.HOTELS, INITIAL_HOTELS);
     this.hotels = loadedHotels.map(h => {
@@ -121,7 +127,7 @@ class StateManager {
     this.bookings = this.load(STORAGE_KEYS.BOOKINGS, INITIAL_BOOKINGS);
     this.wishlist = this.load(STORAGE_KEYS.WISHLIST, ["tour-hunza-expedition-7d", "hotel-luxus-hunza"]);
     this.currency = this.load(STORAGE_KEYS.CURRENCY, "PKR");
-    this.theme = this.load(STORAGE_KEYS.THEME, "dark");
+    this.theme = this.load(STORAGE_KEYS.THEME, 'light');
     this.promoCodes = INITIAL_PROMO_CODES;
     this.notifications = this.load(STORAGE_KEYS.NOTIFICATIONS, [
       {
@@ -159,6 +165,11 @@ class StateManager {
       window.addEventListener('storage', (e) => {
         this.handleStorageEvent(e);
       });
+    }
+
+    // Apply persisted theme to document immediately
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', this.theme);
     }
   }
 

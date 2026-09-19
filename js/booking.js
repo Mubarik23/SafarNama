@@ -42,6 +42,7 @@ class BookingManager {
       itemId: itemReference,
       title,
       rawItem: item,
+      destinationCity: item.destinationName || (item.destination && item.destination.name) || customDetails.destinationCity || (type === 'tour' ? (item.title ? item.title.split(' ')[0] : "Pakistan") : "Pakistan"),
       departureCity: customDetails.departureCity || (state.user ? state.user.city : "Islamabad"),
       travelDate: customDetails.travelDate || "2026-09-20",
       travelersCount: customDetails.travelersCount || 2,
@@ -126,6 +127,7 @@ class BookingManager {
       type: this.currentBookingData.type,
       itemId: this.currentBookingData.itemId,
       title: this.currentBookingData.title,
+      destinationCity: this.currentBookingData.destinationCity || 'Pakistan',
       departureCity: this.currentBookingData.departureCity,
       travelDate: this.currentBookingData.travelDate,
       travelersCount: this.currentBookingData.travelersCount,
@@ -176,6 +178,7 @@ class BookingManager {
         <div class="booking-summary-mini">
           <div class="mini-title">${data.title}</div>
           <div class="mini-meta">
+            <span><i class="fa-solid fa-location-dot text-emerald"></i> Destination: <strong>${data.destinationCity || 'Pakistan'}</strong></span>
             <span><i class="fa-solid fa-users"></i> ${data.travelersCount} Travelers</span>
             <span><i class="fa-solid fa-calendar-check"></i> ${data.travelDate}</span>
             <span><i class="fa-solid fa-money-bill-wave"></i> Total: <strong>${state.formatPrice(data.finalAmountPKR)}</strong></span>
@@ -183,6 +186,33 @@ class BookingManager {
         </div>
 
         <form id="step1-form" class="booking-form-grid" onsubmit="event.preventDefault(); window.bookingEngine.handleStep1Submit();">
+          ${data.type === 'tour' ? `
+            <div class="form-group" style="grid-column: 1 / -1; background: rgba(16, 185, 129, 0.08); padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.25);">
+              <label style="color: #fff; font-weight: 700;"><i class="fa-solid fa-map-pin text-emerald"></i> Tour Destination City (Any City in Pakistan)</label>
+              <div style="display: flex; gap: 8px; margin-top: 6px;">
+                <input
+                  type="text"
+                  id="tour-dest-city-input"
+                  value="${data.destinationCity || ''}"
+                  placeholder="Enter ANY city (e.g. Ziarat, Abbottabad, Swat, Gwadar, Chiniot)..."
+                  class="form-input"
+                  list="all-cities-booking-datalist"
+                  style="background: rgba(15, 23, 42, 0.85); color: #fff; border: 1px solid rgba(16, 185, 129, 0.4);"
+                  onchange="window.bookingEngine.updateDestinationCity(this.value)"
+                />
+                <button type="button" class="btn btn-sm btn-emerald" onclick="window.bookingEngine.updateDestinationCity(document.getElementById('tour-dest-city-input').value)">
+                  Update City
+                </button>
+              </div>
+              <datalist id="all-cities-booking-datalist">
+                ${window.safarnamaApp ? window.safarnamaApp.getDestinationDatalistOptions() : ''}
+              </datalist>
+              <small class="form-hint" style="color: #a7f3d0; margin-top: 4px; display: block;">
+                <i class="fa-solid fa-circle-check"></i> You can book a tour to <strong>ANY</strong> city you want — not restricted to pre-listed cities on the webpage!
+              </small>
+            </div>
+          ` : ''}
+
           <div class="form-group">
             <label><i class="fa-solid fa-user"></i> Full Name (as per CNIC)</label>
             <input type="text" id="lead-name" required value="${data.leadTraveler.fullName}" placeholder="e.g. Muhammad Hamza Khan" class="form-input" />
@@ -470,6 +500,10 @@ class BookingManager {
                     <span class="val">${booking.departureCity}</span>
                   </div>
                   <div class="e-ticket-item">
+                    <span class="label">DESTINATION CITY</span>
+                    <span class="val text-emerald text-bold">${booking.destinationCity || 'Pakistan'}</span>
+                  </div>
+                  <div class="e-ticket-item">
                     <span class="label">TRAVELERS</span>
                     <span class="val">${booking.travelersCount} Person(s)</span>
                   </div>
@@ -528,6 +562,18 @@ class BookingManager {
     `;
   }
 
+  updateDestinationCity(newCity) {
+    if (!this.currentBookingData || !newCity) return;
+    const cleanCity = newCity.trim();
+    if (!cleanCity) return;
+    const formatted = cleanCity.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    this.currentBookingData.destinationCity = formatted;
+    if (this.currentBookingData.type === 'tour') {
+      this.currentBookingData.title = `${formatted} Guided Discovery & Adventure Expedition`;
+    }
+    this.renderBookingModal();
+  }
+
   handleStep1Submit() {
     const leadName = document.getElementById('lead-name').value;
     const leadCnic = document.getElementById('lead-cnic').value;
@@ -535,6 +581,16 @@ class BookingManager {
     const leadEmail = document.getElementById('lead-email').value;
     const depCity = document.getElementById('departure-city').value;
     const travelDate = document.getElementById('travel-date').value;
+
+    const destInput = document.getElementById('tour-dest-city-input');
+    if (destInput && destInput.value.trim()) {
+      const cleanCity = destInput.value.trim();
+      const formatted = cleanCity.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      this.currentBookingData.destinationCity = formatted;
+      if (this.currentBookingData.type === 'tour') {
+        this.currentBookingData.title = `${formatted} Guided Discovery & Adventure Expedition`;
+      }
+    }
 
     this.currentBookingData.leadTraveler = {
       fullName: leadName,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function AIPlannerPage() {
   const [destination, setDestination] = useState('Hunza Valley');
@@ -57,6 +58,25 @@ export default function AIPlannerPage() {
 
   return (
     <div className="section-container">
+      {/* Top Quick Navigation Bar */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', padding: '8px 16px', borderRadius: '10px', background: '#10b981', color: '#fff', fontWeight: 700, fontSize: '0.88rem' }}>
+          <i className="fa-solid fa-house"></i> Return to Home Page
+        </Link>
+        <Link href="/tours" style={{ padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', color: '#f8fafc', textDecoration: 'none', fontSize: '0.85rem' }}>
+          <i className="fa-solid fa-map-location-dot text-emerald"></i> Tours
+        </Link>
+        <Link href="/hotels" style={{ padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', color: '#f8fafc', textDecoration: 'none', fontSize: '0.85rem' }}>
+          <i className="fa-solid fa-hotel text-gold"></i> Hotels
+        </Link>
+        <Link href="/transport" style={{ padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', color: '#f8fafc', textDecoration: 'none', fontSize: '0.85rem' }}>
+          <i className="fa-solid fa-truck-monster text-cyan"></i> 4x4 Jeeps
+        </Link>
+        <Link href="/road-status" style={{ padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', color: '#f8fafc', textDecoration: 'none', fontSize: '0.85rem' }}>
+          <i className="fa-solid fa-satellite-dish text-ruby"></i> Road Radar
+        </Link>
+      </div>
+
       <div className="page-header-box">
         <div className="badge-subtle" style={{ color: '#38bdf8', borderColor: 'rgba(56,189,248,0.4)' }}>
           <i className="fa-solid fa-wand-magic-sparkles text-cyan"></i> AI Trip Architect
@@ -158,6 +178,40 @@ export default function AIPlannerPage() {
                   <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>{item.details}</p>
                 </div>
               ))}
+              {/* Post-Plan Navigation Hub */}
+              <div style={{ marginTop: '24px', padding: '22px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.9) 100%)', border: '1px solid rgba(16, 185, 129, 0.35)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <i className="fa-solid fa-compass text-emerald"></i> Where would you like to go next?
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8' }}>
+                      Your itinerary is ready! Return to Home or browse verified domestic bookings.
+                    </p>
+                  </div>
+                  <Link href="/" style={{ padding: '10px 20px', borderRadius: '10px', background: '#10b981', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-house"></i> Return to Home Page
+                  </Link>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                  <Link href="/" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', textDecoration: 'none', fontSize: '0.88rem' }}>
+                    <i className="fa-solid fa-house text-emerald" style={{ display: 'block', fontSize: '1.2rem', marginBottom: '4px' }}></i> Home Page
+                  </Link>
+                  <Link href="/tours" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', textDecoration: 'none', fontSize: '0.88rem' }}>
+                    <i className="fa-solid fa-map-location-dot text-emerald" style={{ display: 'block', fontSize: '1.2rem', marginBottom: '4px' }}></i> Tours
+                  </Link>
+                  <Link href="/hotels" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', textDecoration: 'none', fontSize: '0.88rem' }}>
+                    <i className="fa-solid fa-hotel text-gold" style={{ display: 'block', fontSize: '1.2rem', marginBottom: '4px' }}></i> Hotels
+                  </Link>
+                  <Link href="/transport" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', textDecoration: 'none', fontSize: '0.88rem' }}>
+                    <i className="fa-solid fa-truck-monster text-cyan" style={{ display: 'block', fontSize: '1.2rem', marginBottom: '4px' }}></i> 4x4 Jeeps
+                  </Link>
+                  <Link href="/road-status" style={{ padding: '12px', textAlign: 'center', borderRadius: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', textDecoration: 'none', fontSize: '0.88rem' }}>
+                    <i className="fa-solid fa-satellite-dish text-ruby" style={{ display: 'block', fontSize: '1.2rem', marginBottom: '4px' }}></i> Road Radar
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -39,6 +39,30 @@ class SafarNamaApp {
     this.executeMapDirections = this.executeMapDirections.bind(this);
     this.clearCityRoute = this.clearCityRoute.bind(this);
     this.planAIWithRoute = this.planAIWithRoute.bind(this);
+    this.mobileMenuOpen = false;
+    this.toggleMobileMenu = this.toggleMobileMenu.bind(this);
+    this.closeMobileMenu = this.closeMobileMenu.bind(this);
+    this.renderMobileDrawer = this.renderMobileDrawer.bind(this);
+    this.renderMobileBottomNav = this.renderMobileBottomNav.bind(this);
+    this.openFullscreenMap = this.openFullscreenMap.bind(this);
+    this.toggleMapFullscreen = this.toggleMapFullscreen.bind(this);
+
+    // Sync fullscreen state if user presses ESC or browser exits native fullscreen
+    document.addEventListener('fullscreenchange', () => {
+      const isNativeFs = Boolean(document.fullscreenElement);
+      const wrapper = document.getElementById('map-view-wrapper');
+      if (!isNativeFs && wrapper && wrapper.classList.contains('map-fullscreen-mode')) {
+        this.toggleMapFullscreen(false);
+      }
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+      const isNativeFs = Boolean(document.webkitFullscreenElement);
+      const wrapper = document.getElementById('map-view-wrapper');
+      if (!isNativeFs && wrapper && wrapper.classList.contains('map-fullscreen-mode')) {
+        this.toggleMapFullscreen(false);
+      }
+    });
+
     window.safarnamaApp = this;
   }
 
@@ -52,6 +76,9 @@ class SafarNamaApp {
     if (shell) {
       shell.style.display = 'block';
     }
+    this.renderHeader();
+    this.renderMobileDrawer();
+    this.renderMobileBottomNav();
   }
 
   lockAppShell(initialTab = 'login', pendingEmail = null) {
@@ -502,16 +529,27 @@ class SafarNamaApp {
     if (icon) {
       icon.className = newTheme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
     }
+    if (this.mobileMenuOpen) {
+      this.renderMobileDrawer();
+    }
   }
 
   navigateTo(viewId, params = {}) {
     this.currentView = viewId;
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Update active nav links
+    // Update active nav links across desktop navbar, mobile drawer, and bottom navigation
     document.querySelectorAll('.nav-link').forEach(link => {
       link.classList.toggle('active', link.dataset.view === viewId);
     });
+    document.querySelectorAll('.drawer-nav-item').forEach(link => {
+      link.classList.toggle('active', link.dataset.view === viewId);
+    });
+    document.querySelectorAll('.bottom-nav-item').forEach(link => {
+      link.classList.toggle('active', link.dataset.view === viewId);
+    });
+
+    this.closeMobileMenu();
 
     const mainContainer = document.getElementById('app-main-content');
     if (!mainContainer) return;
@@ -526,6 +564,8 @@ class SafarNamaApp {
       this.renderTransportView();
     } else if (viewId === 'road-status') {
       this.renderRoadStatusView();
+    } else if (viewId === 'map') {
+      this.renderMapView();
     } else if (viewId === 'ai-planner') {
       this.renderAIPlannerView();
     } else if (viewId === 'dashboard') {
@@ -576,65 +616,26 @@ class SafarNamaApp {
           </div>
         </div>
 
-        <!-- Navigation Links -->
-        <nav class="header-nav">
-          <button class="nav-link ${this.currentView === 'home' ? 'active' : ''}" data-view="home" onclick="window.safarnamaApp.navigateTo('home')">
-            <i class="fa-solid fa-compass"></i> Explore
-          </button>
-          <button class="nav-link ${this.currentView === 'tours' ? 'active' : ''}" data-view="tours" onclick="window.safarnamaApp.navigateTo('tours')">
-            <i class="fa-solid fa-map-location-dot"></i> Guided Tours
-          </button>
-          <button class="nav-link ${this.currentView === 'hotels' ? 'active' : ''}" data-view="hotels" onclick="window.safarnamaApp.navigateTo('hotels')">
-            <i class="fa-solid fa-hotel"></i> Mountain Stays
-          </button>
-          <button class="nav-link ${this.currentView === 'transport' ? 'active' : ''}" data-view="transport" onclick="window.safarnamaApp.navigateTo('transport')">
-            <i class="fa-solid fa-truck-monster"></i> 4x4 & Rentals
-          </button>
-          <button class="nav-link ${this.currentView === 'road-status' ? 'active' : ''}" data-view="road-status" onclick="window.safarnamaApp.navigateTo('road-status')">
-            <span class="pulse-dot"></span> Live Roads & Weather
-          </button>
-          <button class="nav-link btn-ai-nav ${this.currentView === 'ai-planner' ? 'active' : ''}" data-view="ai-planner" onclick="window.safarnamaApp.navigateTo('ai-planner')">
-            <i class="fa-solid fa-wand-magic-sparkles text-gold"></i> SafarAI
-          </button>
-          ${isAdmin ? `
-          <button class="nav-link nav-link-admin ${this.currentView === 'admin' ? 'active' : ''}" data-view="admin" onclick="window.safarnamaApp.navigateTo('admin')">
-            <i class="fa-solid fa-shield-halved text-emerald"></i> Admin
-          </button>` : ''}
-        </nav>
-
-        <!-- Right Side Utility Controls -->
+        <!-- Right Side Utility Controls (Clean & Minimal: All Shortcuts & Tools in Sidebar) -->
         <div class="header-actions">
-          <!-- Currency Selector -->
-          <div class="currency-picker">
-            <select onchange="window.safarnamaApp.handleCurrencyChange(this.value)" class="currency-select" title="Select Currency">
-              <option value="PKR" ${state.currency === 'PKR' ? 'selected' : ''}>🇵🇰 PKR (Rs.)</option>
-              <option value="USD" ${state.currency === 'USD' ? 'selected' : ''}>🇺🇸 USD ($)</option>
-              <option value="EUR" ${state.currency === 'EUR' ? 'selected' : ''}>🇪🇺 EUR (€)</option>
-              <option value="SAR" ${state.currency === 'SAR' ? 'selected' : ''}>🇸🇦 SAR</option>
-              <option value="AED" ${state.currency === 'AED' ? 'selected' : ''}>🇦🇪 AED</option>
-            </select>
-          </div>
+          <!-- Prominent Sidebar Shortcuts Hub Trigger Button -->
+          <button class="header-shortcuts-btn" id="header-shortcuts-btn" onclick="window.safarnamaApp.openSidePanel('shortcuts')" title="All Shortcuts & Navigation Hub">
+            <i class="fa-solid fa-bolt text-gold"></i>
+            <span class="shortcuts-btn-label">Shortcuts</span>
+            <span class="shortcuts-btn-badge">Hub</span>
+          </button>
 
-          <!-- API Key Setup: admin-only -->
-          ${isAdmin ? `
-          <button class="action-btn" id="api-key-header-btn" onclick="window.safarnamaApp.openApiKeyModal()" title="API Key Setup (Admin Only)">
-            <i class="fa-solid fa-key text-gold"></i>
-          </button>` : ''}
-
-          <!-- Theme Switcher -->
-          <button class="action-btn" onclick="window.safarnamaApp.toggleTheme()" title="Toggle Dark/Light Mode">
+          <!-- Theme Toggle -->
+          <button class="theme-toggle-btn" onclick="window.safarnamaApp.toggleTheme()" title="Toggle Dark/Light Mode">
             <i id="theme-toggle-icon" class="${state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'}"></i>
           </button>
 
-          <!-- Notifications Dropdown Trigger -->
+          <!-- Notifications Bell (opens sidebar alerts tab) -->
           <div class="notif-wrapper">
-            <button id="notif-bell-btn" class="action-btn" onclick="window.safarnamaApp.toggleNotifications()" title="Real-time Alerts">
+            <button id="notif-bell-btn" class="action-btn" onclick="window.safarnamaApp.openSidePanel('notifications')" title="Alerts & Notifications">
               <i class="fa-regular fa-bell"></i>
               ${unreadCount > 0 ? `<span class="notif-badge" id="notif-badge-count">${unreadCount}</span>` : ''}
             </button>
-            <div id="notif-dropdown" class="notif-dropdown-menu">
-              <!-- Dynamically Populated -->
-            </div>
           </div>
 
           <!-- User Profile Dropdown -->
@@ -657,6 +658,9 @@ class SafarNamaApp {
               <button class="dropdown-item" onclick="window.safarnamaApp.navigateTo('dashboard'); window.safarnamaApp.toggleUserMenu();">
                 <i class="fa-solid fa-user"></i> My Dashboard & E-Tickets
               </button>
+              <button class="dropdown-item" onclick="window.safarnamaApp.openSidePanel('settings'); window.safarnamaApp.toggleUserMenu();">
+                <i class="fa-solid fa-sliders"></i> Settings & Currency
+              </button>
               ${isAdmin ? `
               <button class="dropdown-item" onclick="window.safarnamaApp.openApiKeyModal(); window.safarnamaApp.toggleUserMenu();">
                 <i class="fa-solid fa-key text-gold"></i> API Key Settings
@@ -678,8 +682,563 @@ class SafarNamaApp {
               `}
             </div>
           </div>
+
+          <!-- Mobile Hamburger Menu Button -->
+          <button class="action-btn mobile-menu-toggle-btn" id="mobile-menu-toggle-btn" onclick="window.safarnamaApp.openSidePanel('shortcuts')" title="Open Navigation Shortcuts" aria-label="Toggle navigation shortcuts">
+            <i class="fa-solid fa-bars" id="mobile-menu-icon"></i>
+          </button>
         </div>
       </div>
+    `;
+
+    // Ensure mobile components are refreshed when header re-renders
+    this.renderMobileDrawer();
+    this.renderMobileBottomNav();
+    this._initSidePanel();
+  }
+
+  // ─── Side Panel Methods ───────────────────────────────────────────────────
+
+  _initSidePanel() {
+    // Ensure panel is closed by default on initial render
+    const panel = document.getElementById('app-side-panel');
+    const overlay = document.getElementById('side-panel-overlay');
+    if (panel && !this._sidePanelOpen) {
+      panel.classList.remove('active');
+      if (overlay) overlay.classList.remove('active');
+    }
+  }
+
+  openSidePanel(tab = 'shortcuts') {
+    this._sidePanelOpen = true;
+    this._sidePanelTab = tab;
+    const panel = document.getElementById('app-side-panel');
+    const overlay = document.getElementById('side-panel-overlay');
+    if (panel) panel.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    this._renderSidePanelContent(tab);
+  }
+
+  closeSidePanel() {
+    this._sidePanelOpen = false;
+    const panel = document.getElementById('app-side-panel');
+    const overlay = document.getElementById('side-panel-overlay');
+    if (panel) panel.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  switchPanelTab(tab) {
+    this._sidePanelTab = tab;
+    // Update tab buttons
+    document.querySelectorAll('.panel-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    const contentEl = document.querySelector('.side-panel-content');
+    if (contentEl) contentEl.innerHTML = this._getSidePanelTabContent(tab);
+    if (tab === 'map') setTimeout(() => this._initSidePanelMap(), 100);
+  }
+
+  _renderSidePanelContent(activeTab = 'shortcuts') {
+    const inner = document.querySelector('#app-side-panel .side-panel-inner');
+    if (!inner) return;
+
+    const tabs = [
+      { id: 'shortcuts',     icon: 'fa-bolt',             label: 'Shortcuts' },
+      { id: 'radar',         icon: 'fa-satellite-dish',   label: 'Radar' },
+      { id: 'map',           icon: 'fa-map-location-dot', label: 'Map' },
+      { id: 'notifications', icon: 'fa-bell',             label: 'Alerts' },
+      { id: 'settings',      icon: 'fa-sliders',          label: 'Settings' },
+    ];
+
+    inner.innerHTML = `
+      <div class="side-panel-header">
+        <div class="side-panel-tabs">
+          ${tabs.map(t => `
+            <button class="panel-tab-btn ${activeTab === t.id ? 'active' : ''}" data-tab="${t.id}"
+              onclick="window.safarnamaApp.switchPanelTab('${t.id}')">
+              <i class="fa-solid ${t.icon}"></i> ${t.label}
+            </button>
+          `).join('')}
+        </div>
+        <button class="side-panel-close-btn" onclick="window.safarnamaApp.closeSidePanel()" title="Close panel">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="side-panel-content">
+        ${this._getSidePanelTabContent(activeTab)}
+      </div>
+    `;
+
+    if (activeTab === 'map') setTimeout(() => this._initSidePanelMap(), 120);
+  }
+
+  _getSidePanelTabContent(tab) {
+    const unreadCount = state.notifications.filter(n => n.unread).length;
+    const isAdmin = authManager.isAdmin;
+
+    switch (tab) {
+      case 'shortcuts':
+        return `
+          <div class="sidebar-section-title">
+            <span><i class="fa-solid fa-bolt text-gold"></i> Navigation & Tools Hub</span>
+            <span class="badge-subtle">1-Click Access</span>
+          </div>
+
+          <!-- Category: Explore & Expeditions -->
+          <div class="shortcut-category-label">EXPLORE & EXPEDITIONS</div>
+          <div class="sidebar-shortcuts-grid">
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('tours'); setTimeout(() => { const inp = document.getElementById('custom-city-tour-input'); if(inp){ inp.focus(); inp.scrollIntoView({behavior:'smooth'}); } }, 120);">
+              <div class="shortcut-icon emerald"><i class="fa-solid fa-plane-departure"></i></div>
+              <div class="shortcut-info">
+                <strong>Book Any City Tour</strong>
+                <span>Instant tour for ANY Pakistan city</span>
+              </div>
+              <span class="shortcut-badge emerald">Any City</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('tours');">
+              <div class="shortcut-icon emerald"><i class="fa-solid fa-map-location-dot"></i></div>
+              <div class="shortcut-info">
+                <strong>Guided Tours</strong>
+                <span>All-inclusive mountain expeditions</span>
+              </div>
+              <span class="shortcut-badge emerald">Trending</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('hotels');">
+              <div class="shortcut-icon gold"><i class="fa-solid fa-hotel"></i></div>
+              <div class="shortcut-info">
+                <strong>Mountain Stays</strong>
+                <span>Heritage forts, chalets & pods</span>
+              </div>
+              <span class="shortcut-badge gold">Verified</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('transport');">
+              <div class="shortcut-icon cyan"><i class="fa-solid fa-truck-monster"></i></div>
+              <div class="shortcut-info">
+                <strong>4x4 & Rentals</strong>
+                <span>Prados, Land Cruisers & jeeps</span>
+              </div>
+              <span class="shortcut-badge cyan">Chauffeured</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('home');">
+              <div class="shortcut-icon purple"><i class="fa-solid fa-compass"></i></div>
+              <div class="shortcut-info">
+                <strong>Explore Home</strong>
+                <span>Discover Pakistan valleys</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category: Surveillance & AI -->
+          <div class="shortcut-category-label" style="margin-top: 1.1rem;">SURVEILLANCE & SMART TOOLS</div>
+          <div class="sidebar-shortcuts-grid">
+            <div class="shortcut-tile" onclick="window.safarnamaApp.switchPanelTab('radar');">
+              <div class="shortcut-icon ruby"><i class="fa-solid fa-satellite-dish"></i></div>
+              <div class="shortcut-info">
+                <strong>Road Radar & Weather</strong>
+                <span>Live KKH & pass conditions</span>
+              </div>
+              <span class="shortcut-badge ruby">Live</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('ai-planner');">
+              <div class="shortcut-icon gold"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+              <div class="shortcut-info">
+                <strong>SafarAI Planner</strong>
+                <span>Personalized Pakistan AI itinerary</span>
+              </div>
+              <span class="shortcut-badge gold">AI</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openFullscreenMap();">
+              <div class="shortcut-icon emerald"><i class="fa-solid fa-map-location-dot"></i></div>
+              <div class="shortcut-info">
+                <strong>Route Finder & Map</strong>
+                <span>City-to-city distances & full screen map</span>
+              </div>
+              <span class="shortcut-badge emerald">Full Map</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.switchPanelTab('notifications');">
+              <div class="shortcut-icon cyan"><i class="fa-solid fa-bell"></i></div>
+              <div class="shortcut-info">
+                <strong>Travel Advisories</strong>
+                <span>Safety, weather & road notices</span>
+              </div>
+              ${unreadCount > 0 ? `<span class="shortcut-badge ruby">${unreadCount} New</span>` : ''}
+            </div>
+          </div>
+
+          <!-- Category: Account & Settings -->
+          <div class="shortcut-category-label" style="margin-top: 1.1rem;">ACCOUNT & SETTINGS</div>
+          <div class="sidebar-shortcuts-grid">
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('dashboard');">
+              <div class="shortcut-icon emerald"><i class="fa-solid fa-ticket"></i></div>
+              <div class="shortcut-info">
+                <strong>My Dashboard</strong>
+                <span>Bookings & digital E-tickets</span>
+              </div>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.switchPanelTab('settings');">
+              <div class="shortcut-icon gold"><i class="fa-solid fa-coins"></i></div>
+              <div class="shortcut-info">
+                <strong>Currency & Theme</strong>
+                <span>${state.currency} • ${state.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+              </div>
+            </div>
+
+            ${isAdmin ? `
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openApiKeyModal();">
+              <div class="shortcut-icon cyan"><i class="fa-solid fa-key"></i></div>
+              <div class="shortcut-info">
+                <strong>API Key Setup</strong>
+                <span>Gemini AI configuration</span>
+              </div>
+              <span class="shortcut-badge gold">Admin</span>
+            </div>
+
+            <div class="shortcut-tile" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('admin');">
+              <div class="shortcut-icon ruby"><i class="fa-solid fa-shield-halved"></i></div>
+              <div class="shortcut-info">
+                <strong>Admin Console</strong>
+                <span>Fleet, bookings & operations</span>
+              </div>
+              <span class="shortcut-badge ruby">Admin</span>
+            </div>
+            ` : ''}
+          </div>
+
+          <!-- Mini Highway Status Bar preview -->
+          <div class="sidebar-highway-mini" onclick="window.safarnamaApp.switchPanelTab('radar');">
+            <div class="shm-top">
+              <span><span class="pulse-dot"></span> <strong>Live Highway Snapshot</strong></span>
+              <span class="text-emerald" style="font-size:0.75rem; font-weight:700;">View Radar &rarr;</span>
+            </div>
+            <div class="shm-pills">
+              <span class="shm-pill open">KKH: Open</span>
+              <span class="shm-pill caution">Babusar: 4x4 Only</span>
+              <span class="shm-pill open">Lowari: Open</span>
+              <span class="shm-pill open">Murree: Open</span>
+            </div>
+          </div>
+        `;
+
+      case 'radar':
+        const alerts = state.roadAlerts || [];
+        return `
+          <div class="sidebar-section-title">
+            <span><i class="fa-solid fa-satellite-dish text-emerald"></i> Real-Time Road Radar</span>
+            <span class="pulse-dot"></span>
+          </div>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.85rem; line-height:1.4;">Live highway surveillance & mountain weather synced with NHMP (130) and northern district administrations.</p>
+
+          <div class="sidebar-radar-list">
+            ${alerts.map(a => `
+              <div class="sidebar-radar-card ${a.statusLevel}" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('road-status');">
+                <div class="radar-card-head">
+                  <span class="hw-pill">${a.highway}</span>
+                  <span class="status-pill ${a.statusLevel}">${a.status}</span>
+                </div>
+                <div class="radar-card-section"><i class="fa-solid fa-road"></i> ${a.section}</div>
+                <div class="radar-card-meta">
+                  <span><i class="fa-solid fa-temperature-half"></i> ${a.temperature}</span>
+                  <span><i class="fa-solid fa-cloud"></i> ${a.weather}</span>
+                </div>
+                <div class="radar-card-advisory"><i class="fa-solid fa-triangle-exclamation"></i> ${a.advisory}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <button class="btn btn-emerald btn-block" style="margin-top:1rem;" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.navigateTo('road-status');">
+            <i class="fa-solid fa-satellite"></i> Open Full Highway Surveillance View
+          </button>
+        `;
+
+      case 'map':
+        return `
+          <div class="panel-map-container" id="side-panel-map" onclick="window.safarnamaApp.openFullscreenMap();" style="cursor:pointer;" title="Click to Open Full Screen Map">
+            <button class="btn-side-map-fs" onclick="event.stopPropagation(); window.safarnamaApp.openFullscreenMap();" title="Open Map on Full Screen">
+              <i class="fa-solid fa-expand"></i> Full Screen
+            </button>
+            <div class="panel-map-hint-badge">
+              <i class="fa-solid fa-up-right-and-down-left-from-center"></i> Tap to Open Full Screen
+            </div>
+          </div>
+          <div style="margin-top:0.85rem">
+            <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:0.4rem;"><i class="fa-solid fa-diamond-turn-right text-emerald"></i> City-to-City Route Planner</h4>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;line-height:1.4;">Quick Pakistan city route links and full interactive map exploration.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:0.4rem; margin-bottom:1rem;">
+              <button class="btn btn-sm btn-outline btn-block" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openFullscreenMap(); setTimeout(() => window.safarnamaApp.quickRoute('Lahore', 'Hunza'), 300);">
+                <i class="fa-solid fa-route text-emerald"></i> Lahore ➔ Hunza (KKH Corridor)
+              </button>
+              <button class="btn btn-sm btn-outline btn-block" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openFullscreenMap(); setTimeout(() => window.safarnamaApp.quickRoute('Islamabad', 'Skardu'), 300);">
+                <i class="fa-solid fa-route text-cyan"></i> Islamabad ➔ Skardu Express
+              </button>
+              <button class="btn btn-sm btn-outline btn-block" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openFullscreenMap(); setTimeout(() => window.safarnamaApp.quickRoute('Karachi', 'Gwadar'), 300);">
+                <i class="fa-solid fa-route text-gold"></i> Karachi ➔ Gwadar Coastal Highway
+              </button>
+            </div>
+
+            <button class="btn btn-emerald btn-block" style="padding:0.75rem 1rem; font-weight:700; font-size:0.9rem;" onclick="window.safarnamaApp.openFullscreenMap();">
+              <i class="fa-solid fa-expand"></i> Open Map on Full Screen
+            </button>
+          </div>
+        `;
+
+      case 'notifications':
+        const notifs = state.notifications.slice(0, 15);
+        const iconMap = { road: { cls: 'ruby', icon: 'fa-triangle-exclamation' }, booking: { cls: 'emerald', icon: 'fa-circle-check' }, info: { cls: 'cyan', icon: 'fa-info-circle' }, weather: { cls: 'gold', icon: 'fa-cloud-sun' } };
+        return `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+            <strong style="font-size:0.9rem;"><i class="fa-regular fa-bell text-emerald"></i> Travel Alerts & Notifications</strong>
+            <span style="font-size:0.75rem;color:var(--text-muted);">${notifs.filter(n=>n.unread).length} unread</span>
+          </div>
+          ${notifs.map(n => {
+            const ic = iconMap[n.type] || iconMap.info;
+            return `<div class="panel-notif-item">
+              <div class="panel-notif-icon ${ic.cls}"><i class="fa-solid ${ic.icon}"></i></div>
+              <div class="panel-notif-body">
+                <div class="panel-notif-title">${n.title}</div>
+                <div class="panel-notif-msg">${n.message}</div>
+                <div class="panel-notif-time">${n.time || 'Just now'}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        `;
+
+      case 'settings':
+        const user = authManager.currentUser;
+        const isLoggedIn = authManager.isLoggedIn;
+        return `
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:0.85rem;"><i class="fa-solid fa-coins text-gold"></i> Currency Preference</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.55rem;margin-bottom:1.5rem;">
+            ${[{v:'PKR',flag:'🇵🇰',name:'Pakistani Rupee'},{v:'USD',flag:'🇺🇸',name:'US Dollar'},{v:'EUR',flag:'🇪🇺',name:'Euro'},{v:'GBP',flag:'🇬🇧',name:'British Pound'},{v:'SAR',flag:'🇸🇦',name:'Saudi Riyal'},{v:'AED',flag:'🇦🇪',name:'UAE Dirham'}].map(c => `
+              <button onclick="window.safarnamaApp.handleCurrencyChange('${c.v}'); document.querySelectorAll('.currency-option-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active');"
+                class="currency-option-btn ${state.currency === c.v ? 'active' : ''}"
+                style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;padding:0.75rem 0.5rem;border-radius:var(--radius-md);border:2px solid ${state.currency === c.v ? 'var(--pk-emerald)' : 'var(--glass-border)'};background:${state.currency === c.v ? 'var(--pk-emerald-tint)' : 'var(--glass-bg)'};cursor:pointer;transition:all 0.2s;font-family:inherit;">
+                <span style="font-size:1.3rem;">${c.flag}</span>
+                <strong style="font-size:0.78rem;color:var(--text-primary);">${c.v}</strong>
+                <span style="font-size:0.65rem;color:var(--text-muted);">${c.name}</span>
+              </button>
+            `).join('')}
+          </div>
+
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:0.85rem;"><i class="fa-solid fa-circle-half-stroke text-emerald"></i> Display Theme</h4>
+          <button class="btn btn-outline btn-block" style="margin-bottom:1.5rem;" onclick="window.safarnamaApp.toggleTheme();">
+            <i class="${state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'}"></i> Switch to ${state.theme === 'dark' ? 'Light' : 'Dark'} Mode
+          </button>
+
+          <h4 style="font-size:0.9rem;font-weight:700;margin-bottom:0.85rem;"><i class="fa-solid fa-user-shield text-cyan"></i> Account & Session</h4>
+          <div style="background:var(--glass-bg);padding:0.85rem;border-radius:var(--radius-md);border:1px solid var(--glass-border);margin-bottom:1rem;">
+            <strong style="font-size:0.85rem;display:block;margin-bottom:0.2rem;">${isLoggedIn ? user.fullName : 'Guest Traveler'}</strong>
+            <span style="font-size:0.74rem;color:var(--text-muted);display:block;margin-bottom:0.6rem;">${isLoggedIn ? user.email : 'Not signed in'}</span>
+            ${isLoggedIn ? `
+            <button class="btn btn-ruby btn-sm btn-block" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.doLogout();">
+              <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+            </button>` : `
+            <button class="btn btn-emerald btn-sm btn-block" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openLoginModal();">
+              <i class="fa-solid fa-right-to-bracket"></i> Sign In to Account
+            </button>`}
+          </div>
+
+          ${isAdmin ? `
+          <button class="btn btn-gold btn-block" onclick="window.safarnamaApp.closeSidePanel(); window.safarnamaApp.openApiKeyModal();">
+            <i class="fa-solid fa-key"></i> Gemini AI API Key Setup
+          </button>` : ''}
+        `;
+      default:
+        return '<p style="color:var(--text-muted);padding:1rem;">Select a tab above.</p>';
+    }
+  }
+
+  _initSidePanelMap() {
+    const el = document.getElementById('side-panel-map');
+    if (!el || el._leafletMap) return;
+    try {
+      const miniMap = L.map('side-panel-map', { zoomControl: false, attributionControl: false }).setView([30.3753, 69.3451], 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, subdomains: 'abc' }).addTo(miniMap);
+      L.control.zoom({ position: 'bottomright' }).addTo(miniMap);
+      el._leafletMap = miniMap;
+      setTimeout(() => miniMap.invalidateSize(), 150);
+    } catch (e) { /* Leaflet not ready */ }
+  }
+
+  toggleMobileMenu() {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+    const drawer = document.getElementById('mobile-nav-drawer');
+    const overlay = document.getElementById('mobile-nav-overlay');
+    const icon = document.getElementById('mobile-menu-icon');
+    if (drawer) {
+      drawer.classList.toggle('open', this.mobileMenuOpen);
+    }
+    if (overlay) {
+      overlay.classList.toggle('open', this.mobileMenuOpen);
+    }
+    if (icon) {
+      icon.className = this.mobileMenuOpen ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+    }
+    if (this.mobileMenuOpen) {
+      this.renderMobileDrawer();
+    }
+  }
+
+  closeMobileMenu() {
+    this.mobileMenuOpen = false;
+    const drawer = document.getElementById('mobile-nav-drawer');
+    const overlay = document.getElementById('mobile-nav-overlay');
+    const icon = document.getElementById('mobile-menu-icon');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    if (icon) icon.className = 'fa-solid fa-bars';
+  }
+
+  renderMobileDrawer() {
+    const drawer = document.getElementById('mobile-nav-drawer');
+    if (!drawer) return;
+
+    const user = authManager.currentUser;
+    const isLoggedIn = authManager.isLoggedIn;
+    const isAdmin = authManager.isAdmin;
+    const displayName = isLoggedIn ? user.fullName : 'Guest Traveler';
+    const displayEmail = isLoggedIn ? user.email : 'Sign in to sync bookings';
+    const displayRole = isLoggedIn ? user.role.toUpperCase() : 'GUEST';
+    const displayAvatar = isLoggedIn
+      ? (user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=6366f1&color=fff&size=128`)
+      : 'https://ui-avatars.com/api/?name=Guest&background=334155&color=94a3b8&size=128';
+
+    drawer.innerHTML = `
+      <div class="drawer-header">
+        <div class="header-brand" onclick="window.safarnamaApp.navigateTo('home'); window.safarnamaApp.closeMobileMenu();">
+          <div class="brand-logo-icon">
+            <i class="fa-solid fa-mountain-sun"></i>
+          </div>
+          <div class="brand-text">
+            <div class="brand-name">SafarNama <span class="brand-badge-pk">PK 🇵🇰</span></div>
+            <div class="brand-tagline">Travel Pakistan Real-Time</div>
+          </div>
+        </div>
+        <button class="drawer-close-btn" onclick="window.safarnamaApp.closeMobileMenu()" aria-label="Close menu">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- User Profile Card -->
+      <div class="drawer-user-card">
+        <img src="${displayAvatar}" alt="${displayName}" class="drawer-user-avatar" />
+        <div class="drawer-user-info">
+          <div class="drawer-user-name">${displayName} <span class="user-role-badge ${isLoggedIn ? user.role : 'guest'}">${displayRole}</span></div>
+          <div class="drawer-user-email">${displayEmail}</div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <div class="drawer-nav-list">
+        <button class="drawer-nav-item ${this.currentView === 'home' ? 'active' : ''}" data-view="home" onclick="window.safarnamaApp.navigateTo('home')">
+          <i class="fa-solid fa-compass"></i>
+          <span>Explore Pakistan</span>
+        </button>
+        <button class="drawer-nav-item ${this.currentView === 'tours' ? 'active' : ''}" data-view="tours" onclick="window.safarnamaApp.navigateTo('tours')">
+          <i class="fa-solid fa-map-location-dot"></i>
+          <span>Guided Tours</span>
+        </button>
+        <button class="drawer-nav-item ${this.currentView === 'hotels' ? 'active' : ''}" data-view="hotels" onclick="window.safarnamaApp.navigateTo('hotels')">
+          <i class="fa-solid fa-hotel"></i>
+          <span>Mountain Resorts & Pods</span>
+        </button>
+        <button class="drawer-nav-item ${this.currentView === 'transport' ? 'active' : ''}" data-view="transport" onclick="window.safarnamaApp.navigateTo('transport')">
+          <i class="fa-solid fa-truck-monster"></i>
+          <span>4x4 Jeeps & Fleet</span>
+        </button>
+        <button class="drawer-nav-item ${this.currentView === 'map' ? 'active' : ''}" data-view="map" onclick="window.safarnamaApp.openFullscreenMap()">
+          <i class="fa-solid fa-map-location-dot text-emerald"></i>
+          <span>Pakistan Map (Full Screen)</span>
+        </button>
+        <button class="drawer-nav-item ${this.currentView === 'road-status' ? 'active' : ''}" data-view="road-status" onclick="window.safarnamaApp.navigateTo('road-status')">
+          <i class="fa-solid fa-triangle-exclamation text-gold"></i>
+          <span>Live Roads & Weather</span>
+        </button>
+        <button class="drawer-nav-item btn-ai-drawer ${this.currentView === 'ai-planner' ? 'active' : ''}" data-view="ai-planner" onclick="window.safarnamaApp.navigateTo('ai-planner')">
+          <i class="fa-solid fa-wand-magic-sparkles text-gold"></i>
+          <span>SafarAI Trip Planner</span>
+        </button>
+        ${isLoggedIn ? `
+        <button class="drawer-nav-item ${this.currentView === 'dashboard' ? 'active' : ''}" data-view="dashboard" onclick="window.safarnamaApp.navigateTo('dashboard')">
+          <i class="fa-solid fa-id-badge text-emerald"></i>
+          <span>My Dashboard & Tickets</span>
+        </button>` : ''}
+        ${isAdmin ? `
+        <button class="drawer-nav-item ${this.currentView === 'admin' ? 'active' : ''}" data-view="admin" onclick="window.safarnamaApp.navigateTo('admin')">
+          <i class="fa-solid fa-shield-halved text-emerald"></i>
+          <span>Admin Command Center</span>
+        </button>
+        <button class="drawer-nav-item" onclick="window.safarnamaApp.closeMobileMenu(); window.safarnamaApp.openApiKeyModal();">
+          <i class="fa-solid fa-key text-gold"></i>
+          <span>API Key Setup</span>
+        </button>` : ''}
+      </div>
+
+      <!-- Drawer Preferences & Actions -->
+      <div class="drawer-footer">
+        <div class="drawer-controls-row">
+          <div class="currency-picker drawer-currency-picker">
+            <select onchange="window.safarnamaApp.handleCurrencyChange(this.value)" class="currency-select" title="Select Currency">
+              <option value="PKR" ${state.currency === 'PKR' ? 'selected' : ''}>🇵🇰 PKR (Rs.)</option>
+              <option value="USD" ${state.currency === 'USD' ? 'selected' : ''}>🇺🇸 USD ($)</option>
+              <option value="EUR" ${state.currency === 'EUR' ? 'selected' : ''}>🇪🇺 EUR (€)</option>
+              <option value="SAR" ${state.currency === 'SAR' ? 'selected' : ''}>🇸🇦 SAR</option>
+              <option value="AED" ${state.currency === 'AED' ? 'selected' : ''}>🇦🇪 AED</option>
+            </select>
+          </div>
+
+          <button class="action-btn drawer-theme-btn" onclick="window.safarnamaApp.toggleTheme()" title="Toggle Dark/Light Mode">
+            <i class="${state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'}"></i>
+            <span>${state.theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
+        </div>
+
+        ${isLoggedIn ? `
+        <button class="btn btn-ruby btn-full drawer-auth-btn" onclick="window.safarnamaApp.closeMobileMenu(); window.safarnamaApp.doLogout();">
+          <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+        </button>` : `
+        <button class="btn btn-emerald btn-full drawer-auth-btn" onclick="window.safarnamaApp.closeMobileMenu(); window.safarnamaApp.openLoginModal();">
+          <i class="fa-solid fa-right-to-bracket"></i> Sign In to Account
+        </button>`}
+      </div>
+    `;
+  }
+
+  renderMobileBottomNav() {
+    const bottomNav = document.getElementById('mobile-bottom-nav');
+    if (!bottomNav) return;
+
+    bottomNav.innerHTML = `
+      <button class="bottom-nav-item ${this.currentView === 'home' || this.currentView === 'explore' ? 'active' : ''}" data-view="home" onclick="window.safarnamaApp.navigateTo('home')">
+        <i class="fa-solid fa-compass"></i>
+        <span>Explore</span>
+      </button>
+      <button class="bottom-nav-item ${this.currentView === 'tours' ? 'active' : ''}" data-view="tours" onclick="window.safarnamaApp.navigateTo('tours')">
+        <i class="fa-solid fa-map-location-dot"></i>
+        <span>Tours</span>
+      </button>
+      <button class="bottom-nav-item ${this.currentView === 'hotels' ? 'active' : ''}" data-view="hotels" onclick="window.safarnamaApp.navigateTo('hotels')">
+        <i class="fa-solid fa-hotel"></i>
+        <span>Stays</span>
+      </button>
+      <button class="bottom-nav-item ${this.currentView === 'road-status' ? 'active' : ''}" data-view="road-status" onclick="window.safarnamaApp.navigateTo('road-status')">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Roads</span>
+      </button>
+      <button class="bottom-nav-item ai-nav-item ${this.currentView === 'ai-planner' ? 'active' : ''}" data-view="ai-planner" onclick="window.safarnamaApp.navigateTo('ai-planner')">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>SafarAI</span>
+      </button>
     `;
   }
 
@@ -1120,36 +1679,6 @@ class SafarNamaApp {
         </div>
       </section>
 
-      <!-- Northern Roads & Live Weather Operational Monitor Bar -->
-      <section class="section-container road-monitor-section">
-        <div class="road-monitor-card">
-          <div class="road-monitor-header">
-            <div>
-              <span class="badge-emerald"><i class="fa-solid fa-satellite"></i> Real-Time Surveillance</span>
-              <h3>Northern Road Conditions & Mountain Weather</h3>
-            </div>
-            <button class="btn btn-sm btn-outline" onclick="window.safarnamaApp.navigateTo('road-status')">
-              Full Highway Monitor <i class="fa-solid fa-arrow-right"></i>
-            </button>
-          </div>
-          <div class="road-status-grid-mini">
-            ${state.roadAlerts.slice(0, 4).map(a => `
-              <div class="road-mini-item ${a.statusLevel}" onclick="window.safarnamaApp.navigateTo('road-status')">
-                <div class="road-mini-top">
-                  <span class="hw-tag">${a.highway.split(' ')[0]}</span>
-                  <span class="hw-status">${a.status}</span>
-                </div>
-                <div class="road-mini-section">${a.section.split('-')[0]} ➔ ${a.section.split('-').slice(-1)[0]}</div>
-                <div class="road-mini-meta">
-                  <span><i class="fa-solid fa-temperature-half"></i> ${a.temperature}</span>
-                  <span><i class="fa-solid fa-cloud"></i> ${a.weather}</span>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </section>
-
       <!-- Featured Domestic Tour Packages -->
       <section class="section-container">
         <div class="section-header-row">
@@ -1165,164 +1694,6 @@ class SafarNamaApp {
 
         <div class="tours-grid">
           ${state.tours.slice(0, 6).map(t => this.renderTourCardHtml(t)).join('')}
-        </div>
-      </section>
-
-      <!-- Interactive Pakistan Travel & Road Map -->
-      <section class="section-container">
-        <div class="map-section-wrapper">
-          <div class="map-header-bar">
-            <div class="map-header-left">
-              <span class="section-kicker"><i class="fa-solid fa-compass"></i> GEOGRAPHIC EXPLORATION</span>
-              <h2 class="section-title">Interactive Pakistan Travel & Road Map</h2>
-              <p class="text-muted">Search tourist destinations, verified hotels & resorts, authentic culinary spots, and scenic highway routes across Pakistan.</p>
-            </div>
-
-            <!-- Integrated Map Search Bar with Live Suggestions -->
-            <div class="map-search-bar-wrap">
-              <div class="map-search-input-box">
-                <i class="fa-solid fa-magnifying-glass map-search-icon"></i>
-                <input
-                  type="text"
-                  id="map-search-input"
-                  class="map-search-input"
-                  placeholder="Search destinations, hotels, restaurants, routes, or cities (e.g., Hunza, Serena, Monal, KKH, Quetta)..."
-                  autocomplete="off"
-                  oninput="window.safarnamaApp.handleMapSearch(this.value)"
-                  onfocus="window.safarnamaApp.handleMapSearch(this.value)"
-                  onkeydown="window.safarnamaApp.handleMapSearchKey(event)"
-                />
-                <button
-                  type="button"
-                  id="map-search-clear-btn"
-                  class="map-search-clear-btn"
-                  style="display: none;"
-                  onclick="window.safarnamaApp.clearMapSearch()"
-                  title="Clear search"
-                >
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
-              </div>
-              <div id="map-search-dropdown" class="map-search-dropdown"></div>
-            </div>
-
-            <!-- Functional Map Layer Filter Buttons -->
-            <div class="map-filter-pills">
-              <button class="map-pill active" data-filter="all" onclick="window.safarnamaApp.filterMap('all', this)">
-                <i class="fa-solid fa-globe"></i> All
-              </button>
-              <button class="map-pill" data-filter="destinations" onclick="window.safarnamaApp.filterMap('destinations', this)">
-                <i class="fa-solid fa-mountain-sun text-emerald"></i> Destinations <span class="pill-count">${state.destinations?.length || 8}</span>
-              </button>
-              <button class="map-pill" data-filter="hotels" onclick="window.safarnamaApp.filterMap('hotels', this)">
-                <i class="fa-solid fa-hotel text-cyan"></i> Hotels <span class="pill-count">${state.hotels?.length || 10}</span>
-              </button>
-              <button class="map-pill" data-filter="restaurants" onclick="window.safarnamaApp.filterMap('restaurants', this)">
-                <i class="fa-solid fa-utensils text-gold"></i> Restaurants <span class="pill-count">${state.restaurants?.length || 12}</span>
-              </button>
-              <button class="map-pill" data-filter="routes" onclick="window.safarnamaApp.filterMap('routes', this)">
-                <i class="fa-solid fa-route text-purple"></i> Routes <span class="pill-count">${state.routes?.length || 6}</span>
-              </button>
-              <button class="map-pill" data-filter="roads" onclick="window.safarnamaApp.filterMap('roads', this)">
-                <i class="fa-solid fa-triangle-exclamation text-coral"></i> Live Roads <span class="pill-count">${state.roadAlerts?.length || 6}</span>
-              </button>
-              <button class="map-pill" id="map-pill-directions" onclick="window.safarnamaApp.toggleMapDirections()">
-                <i class="fa-solid fa-diamond-turn-right text-emerald"></i> Route Finder
-              </button>
-            </div>
-          </div>
-
-          <!-- City-to-City Route Directions Panel -->
-          <div id="map-directions-panel" class="map-directions-panel" style="display: none;">
-            <div class="directions-panel-header">
-              <div class="directions-panel-title">
-                <i class="fa-solid fa-diamond-turn-right text-emerald"></i>
-                <span><strong>City-to-City Route Planner & Distance Calculator</strong></span>
-              </div>
-              <button type="button" class="directions-close-btn" onclick="window.safarnamaApp.toggleMapDirections(false)" title="Close Directions Panel">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-
-            <div class="directions-form-grid">
-              <div class="directions-input-group">
-                <label for="route-origin-input"><i class="fa-solid fa-circle-dot text-emerald"></i> Starting City (Origin)</label>
-                <input
-                  type="text"
-                  id="route-origin-input"
-                  list="pk-cities-datalist"
-                  placeholder="e.g. Lahore, Islamabad, Karachi..."
-                  class="directions-input"
-                  autocomplete="off"
-                />
-              </div>
-
-              <button type="button" class="directions-swap-btn" onclick="window.safarnamaApp.swapDirections()" title="Swap Origin & Destination">
-                <i class="fa-solid fa-arrow-right-arrow-left"></i>
-              </button>
-
-              <div class="directions-input-group">
-                <label for="route-dest-input"><i class="fa-solid fa-location-dot text-coral"></i> Destination City / Valley</label>
-                <input
-                  type="text"
-                  id="route-dest-input"
-                  list="pk-cities-datalist"
-                  placeholder="e.g. Hunza, Skardu, Swat, Gwadar..."
-                  class="directions-input"
-                  autocomplete="off"
-                />
-              </div>
-
-              <button type="button" class="btn btn-emerald directions-find-btn" onclick="window.safarnamaApp.executeMapDirections()">
-                <i class="fa-solid fa-route"></i> Calculate & Show Route
-              </button>
-            </div>
-
-            <div class="directions-quick-pills">
-              <span class="quick-label"><i class="fa-solid fa-bolt text-gold"></i> Popular Expeditions:</span>
-              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Lahore', 'Hunza')">Lahore ➔ Hunza</button>
-              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Islamabad', 'Skardu')">Islamabad ➔ Skardu</button>
-              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Islamabad', 'Swat')">Islamabad ➔ Swat</button>
-              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Rawalpindi', 'Naran')">Rawalpindi ➔ Naran</button>
-              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Karachi', 'Gwadar')">Karachi ➔ Gwadar</button>
-            </div>
-
-            <datalist id="pk-cities-datalist">
-              <option value="Islamabad">
-              <option value="Rawalpindi">
-              <option value="Lahore">
-              <option value="Karachi">
-              <option value="Peshawar">
-              <option value="Quetta">
-              <option value="Multan">
-              <option value="Faisalabad">
-              <option value="Hunza (Karimabad)">
-              <option value="Skardu">
-              <option value="Swat (Mingora)">
-              <option value="Kalam">
-              <option value="Naran">
-              <option value="Gilgit">
-              <option value="Chitral">
-              <option value="Gwadar">
-              <option value="Neelum Valley">
-              <option value="Muzaffarabad">
-              <option value="Murree">
-              <option value="Ziarat">
-            </datalist>
-          </div>
-
-          <div class="map-canvas-container">
-            <div id="pakistan-map" class="pakistan-leaflet-container"></div>
-            <div id="map-route-summary-mount" class="map-route-summary-mount"></div>
-            <div class="map-floating-bar">
-              <span id="map-layer-indicator" class="map-layer-indicator">
-                <i class="fa-solid fa-layer-group"></i> Showing: All Layers (Destinations, Hotels, Restaurants, Routes, Roads)
-              </span>
-              <button class="map-control-btn" onclick="window.safarnamaApp.resetMapView()" title="Reset Pakistan View">
-                <i class="fa-solid fa-compress"></i> Reset View
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -1468,9 +1839,12 @@ class SafarNamaApp {
       </section>
     `;
 
-    // Initialize Leaflet Map after DOM rendering
+    // Initialize Leaflet Map if container exists
     setTimeout(() => {
-      travelMap.init();
+      const mapContainer = document.getElementById('pakistan-map');
+      if (mapContainer && typeof travelMap !== 'undefined') {
+        travelMap.init();
+      }
     }, 100);
   }
 
@@ -1531,9 +1905,15 @@ class SafarNamaApp {
           <div class="dest-road-tag ${dest.roadStatus.toLowerCase().includes('open') ? 'open' : 'warning'}">
             <i class="fa-solid fa-road"></i> ${dest.roadStatus.substring(0, 42)}...
           </div>
-          <div class="dest-footer">
-            <span>Tours from <strong>${state.formatPrice(dest.averageTourPrice)}</strong></span>
-            <span class="text-emerald text-bold">Explore Valley <i class="fa-solid fa-chevron-right"></i></span>
+          <div class="dest-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div>
+              <small style="display:block; font-size:0.75rem; color: var(--text-muted);">Tours from</small>
+              <strong style="color: var(--emerald); font-size: 0.95rem;">${state.formatPrice(dest.averageTourPrice)}</strong>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button class="btn btn-xs btn-outline" onclick="event.stopPropagation(); window.safarnamaApp.viewDestination('${dest.id}')">Explore</button>
+              <button class="btn btn-xs btn-emerald" onclick="event.stopPropagation(); window.safarnamaApp.bookTourForDestination('${dest.id}')"><i class="fa-solid fa-ticket"></i> Book Tour</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1612,33 +1992,99 @@ class SafarNamaApp {
     mainContainer.innerHTML = `
       <div class="section-container page-header-compact">
         <h1><i class="fa-solid fa-map-location-dot text-emerald"></i> Domestic Tour Packages across Pakistan</h1>
-        <p class="text-muted">Discover fully guided expeditions to Hunza, Skardu, Swat, Fairy Meadows, Neelum Valley, and Gwadar with real-time seat tracking.</p>
+        <p class="text-muted">Discover fully guided expeditions to all cities and valleys across Pakistan — Hunza, Skardu, Swat, Kumrat, Kaghan, Fairy Meadows, Neelum Valley, Chitral, Murree, Cholistan Desert, Historic Lahore, Gwadar and any destination nationwide with real-time seat tracking.</p>
       </div>
 
       <div class="section-container">
+        <!-- Any-City Domestic Tour Booking Interface (Not restricted to pre-listed website destinations) -->
+        <div class="quick-city-book-banner glass-panel" style="margin-bottom: 24px; padding: 22px 26px; border-radius: 18px; border: 1px solid rgba(16, 185, 129, 0.3); background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.85) 100%); box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+          <div style="max-width: 720px;">
+            <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; color: var(--emerald); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">
+              <i class="fa-solid fa-plane-departure"></i> 100% Nationwide Coverage • Any City in Pakistan
+            </div>
+            <h3 style="margin: 0 0 6px 0; font-size: 1.35rem; color: #fff; font-weight: 800;">Book a Tour to ANY City in Pakistan</h3>
+            <p style="margin: 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.55;">
+              Not limited to pre-listed cities! Type <strong>ANY</strong> city, valley, or town in Pakistan (e.g. <em>Ziarat, Abbottabad, Muzaffarabad, Gwadar, Chiniot, Bahawalpur, Skardu, Chitral</em>, etc.) and generate an instant, fully verified guided domestic tour package with dedicated AC transport, verified lodging, and meals in PKR.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; margin-top: 16px;">
+            <div style="position: relative; flex: 1; min-width: 280px;">
+              <i class="fa-solid fa-location-dot" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--emerald); pointer-events: none; font-size: 1rem;"></i>
+              <input
+                type="text"
+                id="custom-city-tour-input"
+                list="all-custom-cities-tour-list"
+                placeholder="Type ANY city or destination (e.g. Ziarat, Abbottabad, Muzaffarabad, Gwadar)..."
+                class="form-input"
+                style="padding: 12px 14px 12px 40px; width: 100%; border-radius: 12px; background: rgba(15, 23, 42, 0.9); color: #fff; border: 1px solid rgba(16, 185, 129, 0.45); font-size: 0.95rem;"
+                onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.safarnamaApp.bookCustomCityTour(); }"
+              />
+              <datalist id="all-custom-cities-tour-list">
+                ${this.getDestinationDatalistOptions()}
+              </datalist>
+            </div>
+            <button class="btn btn-emerald" style="padding: 12px 24px; font-weight: 700; font-size: 0.95rem; border-radius: 12px; white-space: nowrap; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);" onclick="window.safarnamaApp.bookCustomCityTour()">
+              <i class="fa-solid fa-bolt"></i> Book This City Tour
+            </button>
+          </div>
+
+          <!-- Quick Suggestion City Chips -->
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; font-size: 0.82rem;">
+            <span style="font-weight: 600; color: #cbd5e1; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-fire text-gold"></i> Quick Suggestions:
+            </span>
+            ${['Hunza', 'Skardu', 'Swat', 'Ziarat', 'Gwadar', 'Abbottabad', 'Chitral', 'Neelum Valley', 'Fairy Meadows', 'Murree', 'Kumrat', 'Bahawalpur', 'Quetta', 'Gorakh Hill'].map(city => `
+              <button type="button" class="btn btn-xs btn-outline" style="border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15);" onclick="document.getElementById('custom-city-tour-input').value = '${city}'; window.safarnamaApp.bookTourForDestination('${city}');">
+                ${city}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
         <!-- Filter Bar -->
         <div class="catalog-filters-bar">
           <div class="filter-group">
-            <label>Filter by Destination:</label>
+            <label>Filter by Pre-Made Package:</label>
             <select class="form-select" onchange="window.safarnamaApp.filterToursByDest(this.value)">
-              <option value="all" ${this.selectedDestinationFilter === 'all' ? 'selected' : ''}>All Valleys & Regions</option>
-              ${state.destinations.map(d => `<option value="${d.id}" ${this.selectedDestinationFilter === d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
+              <option value="all" ${this.selectedDestinationFilter === 'all' ? 'selected' : ''}>All Listed Cities & Tourist Valleys (${state.destinations.length})</option>
+              ${state.destinations.map(d => `<option value="${d.id}" ${this.selectedDestinationFilter === d.id ? 'selected' : ''}>${d.name} (${d.region})</option>`).join('')}
             </select>
           </div>
 
           <div class="filter-group">
-            <label>Search Keyword:</label>
-            <input type="text" placeholder="Search Hunza, Deosai, Trek..." class="form-input" value="${this.searchQuery}" oninput="window.safarnamaApp.handleTourSearchInput(this.value)" />
+            <label>Search Any City or Tour:</label>
+            <input type="text" placeholder="Search any city, valley, trek or tour..." class="form-input" value="${this.searchQuery}" oninput="window.safarnamaApp.handleTourSearchInput(this.value)" />
           </div>
         </div>
 
         <div class="tours-grid">
           ${filteredTours.length > 0 ? filteredTours.map(t => this.renderTourCardHtml(t)).join('') : `
-            <div class="no-results-box">
-              <i class="fa-solid fa-mountain text-muted"></i>
-              <h3>No matching tours found</h3>
-              <p>Try changing your destination filter or search terms.</p>
-              <button class="btn btn-emerald" onclick="window.safarnamaApp.filterToursByDest('all')">Reset Filters</button>
+            <div class="no-results-box" style="padding: 40px 24px; text-align: center; background: rgba(16, 185, 129, 0.04); border: 1px dashed rgba(16, 185, 129, 0.4); border-radius: 16px;">
+              <i class="fa-solid fa-map-location-dot text-emerald" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+              <h3>${this.searchQuery ? `Book a Verified Tour to "${this.searchQuery}"!` : (this.selectedDestinationFilter !== 'all' ? `Tour Available for ${state.destinations.find(d => d.id === this.selectedDestinationFilter)?.name || this.selectedDestinationFilter}!` : 'Custom City Tour Available!')}</h3>
+              <p style="max-width: 580px; margin: 0.5rem auto 1.5rem; color: #94a3b8; line-height: 1.6;">
+                ${this.searchQuery ? `No pre-scheduled fixed-date departure found for "<strong>${this.searchQuery}</strong>", but you can instantly book a fully escorted private tour package to <strong>${this.searchQuery}</strong> with AC transport, verified lodging, and certified guide!` : `You can book an all-inclusive verified guided expedition to ANY city or valley across Pakistan. Dedicated AC transport, hotel stays, and verified safety standards included.`}
+              </p>
+              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                ${this.searchQuery ? `
+                  <button class="btn btn-emerald" style="padding: 11px 22px; font-weight: 700;" onclick="window.safarnamaApp.bookTourForDestination('${this.searchQuery.replace(/'/g, "\\'")}')">
+                    <i class="fa-solid fa-bolt"></i> Instant Book Tour for "${this.searchQuery}"
+                  </button>
+                ` : (this.selectedDestinationFilter !== 'all' ? `
+                  <button class="btn btn-emerald" style="padding: 11px 22px; font-weight: 700;" onclick="window.safarnamaApp.bookTourForDestination('${this.selectedDestinationFilter}')">
+                    <i class="fa-solid fa-bolt"></i> Instant Book Tour for ${state.destinations.find(d => d.id === this.selectedDestinationFilter)?.name || this.selectedDestinationFilter}
+                  </button>
+                ` : '')}
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="text" id="no-results-city-input" placeholder="Or enter any custom city..." class="form-input" style="padding: 9px 14px; border-radius: 8px; width: 220px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.safarnamaApp.bookTourForDestination(this.value);}" />
+                  <button class="btn btn-emerald" onclick="window.safarnamaApp.bookTourForDestination(document.getElementById('no-results-city-input').value)">
+                    <i class="fa-solid fa-ticket"></i> Book
+                  </button>
+                </div>
+                <button class="btn btn-outline" onclick="window.safarnamaApp.filterToursByDest('all'); window.safarnamaApp.handleTourSearchInput('');">View All Tours</button>
+                <button class="btn btn-gold" onclick="window.safarnamaApp.navigateTo('ai-planner')">Plan Custom Itinerary with SafarAI</button>
+              </div>
             </div>
           `}
         </div>
@@ -1760,6 +2206,278 @@ class SafarNamaApp {
         </div>
       </div>
     `;
+  }
+
+  renderMapView() {
+    const mainContainer = document.getElementById('app-main-content');
+    if (!mainContainer) return;
+
+    const startFullscreen = Boolean(this._startInFullscreen);
+    this._startInFullscreen = false;
+
+    if (startFullscreen) {
+      document.body.classList.add('map-fs-active');
+    }
+
+    mainContainer.innerHTML = `
+      <div class="map-view-wrapper ${startFullscreen ? 'map-fullscreen-mode' : ''}" id="map-view-wrapper">
+        <!-- Map View Top Navigation Bar -->
+        <div class="map-view-header">
+          <div class="map-view-top-row">
+            <div class="map-view-title-group">
+              <button class="btn btn-sm btn-outline map-back-btn" onclick="window.safarnamaApp.navigateTo('home')" title="Back to Home">
+                <i class="fa-solid fa-arrow-left"></i> <span>Home</span>
+              </button>
+              <h2 class="map-view-heading">
+                <i class="fa-solid fa-compass text-emerald"></i> Pakistan Interactive Travel &amp; Road Map
+              </h2>
+            </div>
+
+            <div class="map-view-actions-group">
+              <button class="btn btn-sm btn-emerald" id="map-pill-directions" onclick="window.safarnamaApp.toggleMapDirections()">
+                <i class="fa-solid fa-diamond-turn-right"></i> Route Finder
+              </button>
+              <button class="btn btn-sm btn-outline btn-map-fs-toggle" id="map-view-fs-btn-top" onclick="window.safarnamaApp.toggleMapFullscreen()" title="Toggle Full Screen Mode">
+                <i class="${startFullscreen ? 'fa-solid fa-compress' : 'fa-solid fa-expand'}" id="map-fs-icon"></i> <span id="map-fs-text">${startFullscreen ? 'Exit Full Screen' : 'Full Screen'}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Search Bar & Filters -->
+          <div class="map-view-controls-row">
+            <div class="map-search-bar-wrap">
+              <div class="map-search-input-box">
+                <i class="fa-solid fa-magnifying-glass map-search-icon"></i>
+                <input
+                  type="text"
+                  id="map-search-input"
+                  class="map-search-input"
+                  placeholder="Search destinations, hotels, restaurants, routes, or cities (e.g., Hunza, Serena, Monal, KKH, Quetta)..."
+                  autocomplete="off"
+                  oninput="window.safarnamaApp.handleMapSearch(this.value)"
+                  onfocus="window.safarnamaApp.handleMapSearch(this.value)"
+                  onkeydown="window.safarnamaApp.handleMapSearchKey(event)"
+                />
+                <button
+                  type="button"
+                  id="map-search-clear-btn"
+                  class="map-search-clear-btn"
+                  style="display: none;"
+                  onclick="window.safarnamaApp.clearMapSearch()"
+                  title="Clear search"
+                >
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div id="map-search-dropdown" class="map-search-dropdown"></div>
+            </div>
+
+            <div class="map-filter-pills">
+              <button class="map-pill active" data-filter="all" onclick="window.safarnamaApp.filterMap('all', this)">
+                <i class="fa-solid fa-globe"></i> All
+              </button>
+              <button class="map-pill" data-filter="destinations" onclick="window.safarnamaApp.filterMap('destinations', this)">
+                <i class="fa-solid fa-mountain-sun text-emerald"></i> Destinations <span class="pill-count">${state.destinations?.length || 8}</span>
+              </button>
+              <button class="map-pill" data-filter="hotels" onclick="window.safarnamaApp.filterMap('hotels', this)">
+                <i class="fa-solid fa-hotel text-cyan"></i> Hotels <span class="pill-count">${state.hotels?.length || 10}</span>
+              </button>
+              <button class="map-pill" data-filter="restaurants" onclick="window.safarnamaApp.filterMap('restaurants', this)">
+                <i class="fa-solid fa-utensils text-gold"></i> Restaurants <span class="pill-count">${state.restaurants?.length || 12}</span>
+              </button>
+              <button class="map-pill" data-filter="routes" onclick="window.safarnamaApp.filterMap('routes', this)">
+                <i class="fa-solid fa-route text-purple"></i> Routes <span class="pill-count">${state.routes?.length || 6}</span>
+              </button>
+              <button class="map-pill" data-filter="roads" onclick="window.safarnamaApp.filterMap('roads', this)">
+                <i class="fa-solid fa-triangle-exclamation text-coral"></i> Live Roads <span class="pill-count">${state.roadAlerts?.length || 6}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- City-to-City Route Directions Panel (Collapsible) -->
+          <div id="map-directions-panel" class="map-directions-panel" style="display: none;">
+            <div class="directions-panel-header">
+              <div class="directions-panel-title">
+                <i class="fa-solid fa-diamond-turn-right text-emerald"></i>
+                <span><strong>City-to-City Route Planner & Distance Calculator</strong></span>
+              </div>
+              <button type="button" class="directions-close-btn" onclick="window.safarnamaApp.toggleMapDirections(false)" title="Close Directions Panel">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div class="directions-form-grid">
+              <div class="directions-input-group">
+                <label for="route-origin-input"><i class="fa-solid fa-circle-dot text-emerald"></i> Starting City (Origin)</label>
+                <input
+                  type="text"
+                  id="route-origin-input"
+                  list="pk-cities-datalist"
+                  placeholder="e.g. Lahore, Islamabad, Karachi..."
+                  class="directions-input"
+                  autocomplete="off"
+                />
+              </div>
+
+              <button type="button" class="directions-swap-btn" onclick="window.safarnamaApp.swapDirections()" title="Swap Origin & Destination">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+              </button>
+
+              <div class="directions-input-group">
+                <label for="route-dest-input"><i class="fa-solid fa-location-dot text-coral"></i> Destination City / Valley</label>
+                <input
+                  type="text"
+                  id="route-dest-input"
+                  list="pk-cities-datalist"
+                  placeholder="e.g. Hunza, Skardu, Swat, Gwadar..."
+                  class="directions-input"
+                  autocomplete="off"
+                />
+              </div>
+
+              <button type="button" class="btn btn-emerald directions-find-btn" onclick="window.safarnamaApp.executeMapDirections()">
+                <i class="fa-solid fa-route"></i> Calculate & Show Route
+              </button>
+            </div>
+
+            <div class="directions-quick-pills">
+              <span class="quick-label"><i class="fa-solid fa-bolt text-gold"></i> Popular Expeditions:</span>
+              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Lahore', 'Hunza')">Lahore ➔ Hunza</button>
+              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Islamabad', 'Skardu')">Islamabad ➔ Skardu</button>
+              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Islamabad', 'Swat')">Islamabad ➔ Swat</button>
+              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Rawalpindi', 'Naran')">Rawalpindi ➔ Naran</button>
+              <button type="button" class="quick-route-chip" onclick="window.safarnamaApp.quickRoute('Karachi', 'Gwadar')">Karachi ➔ Gwadar</button>
+            </div>
+
+            <datalist id="pk-cities-datalist">
+              <option value="Islamabad">
+              <option value="Rawalpindi">
+              <option value="Lahore">
+              <option value="Karachi">
+              <option value="Peshawar">
+              <option value="Quetta">
+              <option value="Multan">
+              <option value="Faisalabad">
+              <option value="Hunza (Karimabad)">
+              <option value="Skardu">
+              <option value="Swat (Mingora)">
+              <option value="Kalam">
+              <option value="Naran">
+              <option value="Gilgit">
+              <option value="Chitral">
+              <option value="Gwadar">
+              <option value="Neelum Valley">
+              <option value="Muzaffarabad">
+              <option value="Murree">
+              <option value="Ziarat">
+            </datalist>
+          </div>
+        </div>
+
+        <!-- Map Canvas Container -->
+        <div class="map-canvas-container map-view-canvas-container">
+          <div id="pakistan-map" class="pakistan-leaflet-container pakistan-map-fullview"></div>
+          <div id="map-route-summary-mount" class="map-route-summary-mount"></div>
+          <div class="map-floating-bar">
+            <span id="map-layer-indicator" class="map-layer-indicator">
+              <i class="fa-solid fa-layer-group"></i> Showing: All Layers (Destinations, Hotels, Restaurants, Routes, Roads)
+            </span>
+            <button class="map-control-btn" onclick="window.safarnamaApp.resetMapView()" title="Reset Pakistan View">
+              <i class="fa-solid fa-compress"></i> Reset View
+            </button>
+            <button class="map-control-btn" id="map-view-fs-btn-bottom" onclick="window.safarnamaApp.toggleMapFullscreen()" title="Toggle Full Screen Mode">
+              <i class="${startFullscreen ? 'fa-solid fa-compress' : 'fa-solid fa-expand'}" id="map-fs-bottom-icon"></i> <span id="map-fs-bottom-text">${startFullscreen ? 'Exit Full Screen' : 'Full Screen'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      if (typeof travelMap !== 'undefined') {
+        travelMap.init();
+      }
+    }, 50);
+  }
+
+  openFullscreenMap() {
+    this.closeSidePanel();
+    this.closeMobileMenu();
+    this._startInFullscreen = true;
+    if (this.currentView === 'map') {
+      this.toggleMapFullscreen(true);
+    } else {
+      this.navigateTo('map');
+      setTimeout(() => {
+        this.toggleMapFullscreen(true);
+      }, 80);
+    }
+  }
+
+  toggleMapFullscreen(force) {
+    if (this.currentView !== 'map') {
+      this.closeSidePanel();
+      this.closeMobileMenu();
+      this._startInFullscreen = true;
+      this.navigateTo('map');
+      setTimeout(() => this.toggleMapFullscreen(true), 120);
+      return;
+    }
+
+    const wrapper = document.getElementById('map-view-wrapper');
+    if (!wrapper) return;
+
+    const isCurrentlyFs = wrapper.classList.contains('map-fullscreen-mode') || Boolean(document.fullscreenElement);
+    const targetFs = typeof force === 'boolean' ? force : !isCurrentlyFs;
+
+    wrapper.classList.toggle('map-fullscreen-mode', targetFs);
+    document.body.classList.toggle('map-fs-active', targetFs);
+
+    // Sync icons and labels across all fullscreen buttons
+    const fsIcon = document.getElementById('map-fs-icon');
+    const fsText = document.getElementById('map-fs-text');
+    const btmIcon = document.getElementById('map-fs-bottom-icon');
+    const btmText = document.getElementById('map-fs-bottom-text');
+
+    if (fsIcon) fsIcon.className = targetFs ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+    if (fsText) fsText.textContent = targetFs ? 'Exit Full Screen' : 'Full Screen';
+    if (btmIcon) btmIcon.className = targetFs ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+    if (btmText) btmText.textContent = targetFs ? 'Exit Full Screen' : 'Full Screen';
+
+    // HTML5 Fullscreen API integration (with non-blocking fallback)
+    try {
+      if (targetFs) {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const req = wrapper.requestFullscreen || wrapper.webkitRequestFullscreen || document.documentElement.requestFullscreen;
+          if (req) {
+            req.call(wrapper).catch(() => {
+              /* Browser policy might require user gesture; CSS fullscreen mode remains 100% active */
+            });
+          }
+        }
+      } else {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          const exit = document.exitFullscreen || document.webkitExitFullscreen;
+          if (exit) {
+            exit.call(document).catch(() => {});
+          }
+        }
+      }
+    } catch (e) {
+      /* Graceful fallback */
+    }
+
+    // Repeated invalidateSize to guarantee Leaflet recalculates dimensions across animation frames
+    const triggerMapResize = () => {
+      if (typeof travelMap !== 'undefined' && travelMap.map) {
+        travelMap.map.invalidateSize(true);
+      }
+    };
+
+    triggerMapResize();
+    setTimeout(triggerMapResize, 60);
+    setTimeout(triggerMapResize, 200);
+    setTimeout(triggerMapResize, 500);
   }
 
   setRoadStatusTab(tab) {
@@ -1960,6 +2678,28 @@ class SafarNamaApp {
 
     mainContainer.innerHTML = `
       <div class="section-container page-header-compact">
+        <!-- Persistent Top Navigation Bar -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+          <button class="btn btn-sm btn-emerald" style="border-radius: 10px; font-weight: 700;" onclick="window.safarnamaApp.navigateTo('home')">
+            <i class="fa-solid fa-house"></i> Return to Home Page
+          </button>
+          <button class="btn btn-sm btn-outline" style="border-radius: 10px;" onclick="window.safarnamaApp.navigateTo('tours')">
+            <i class="fa-solid fa-map-location-dot"></i> Tour Packages
+          </button>
+          <button class="btn btn-sm btn-outline" style="border-radius: 10px;" onclick="window.safarnamaApp.navigateTo('hotels')">
+            <i class="fa-solid fa-hotel"></i> Mountain Stays
+          </button>
+          <button class="btn btn-sm btn-outline" style="border-radius: 10px;" onclick="window.safarnamaApp.navigateTo('transport')">
+            <i class="fa-solid fa-truck-monster"></i> 4x4 Fleet
+          </button>
+          <button class="btn btn-sm btn-outline" style="border-radius: 10px;" onclick="window.safarnamaApp.navigateTo('road-status')">
+            <i class="fa-solid fa-satellite-dish"></i> Highway Radar
+          </button>
+          <button class="btn btn-sm btn-outline" style="border-radius: 10px;" onclick="window.safarnamaApp.openFullscreenMap()">
+            <i class="fa-solid fa-expand"></i> Pakistan Map
+          </button>
+        </div>
+
         <div class="page-title-row">
           <div>
             <span class="badge-gold"><i class="fa-solid fa-wand-magic-sparkles"></i> SafarAI Smart Travel Assistant</span>
@@ -2231,10 +2971,32 @@ class SafarNamaApp {
     if (!resultBox) return;
 
     const html = this.markdownToHtml(markdown);
-    const hasKey = !!safarAI.getApiKey();
+    const destName = params ? (params.destination || '') : '';
 
     resultBox.innerHTML = `
       <div class="gemini-plan-card">
+        <!-- Quick Top Navigation Bar -->
+        <div class="plan-top-nav-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 12px 18px; border-radius: 14px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.1);">
+          <button class="btn btn-sm btn-emerald" style="font-weight: 700; border-radius: 10px;" onclick="window.safarnamaApp.navigateTo('home')">
+            <i class="fa-solid fa-house"></i> Return to Home Page
+          </button>
+          <div style="display: flex; gap: 8px; align-items: center; font-size: 0.82rem; color: #94a3b8; flex-wrap: wrap;">
+            <span>Explore:</span>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('tours')">
+              <i class="fa-solid fa-map-location-dot text-emerald"></i> Tours
+            </button>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('hotels')">
+              <i class="fa-solid fa-hotel text-gold"></i> Hotels
+            </button>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('transport')">
+              <i class="fa-solid fa-truck-monster text-cyan"></i> 4x4 Jeeps
+            </button>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('road-status')">
+              <i class="fa-solid fa-satellite-dish text-ruby"></i> Radar
+            </button>
+          </div>
+        </div>
+
         <div class="gemini-plan-badge">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
           <span>AI-Generated by Google Gemini</span>
@@ -2242,12 +3004,15 @@ class SafarNamaApp {
           <span class="gemini-live-label">Live Road Data</span>
         </div>
         <div class="gemini-plan-content">${html}</div>
-        <div class="gemini-plan-actions">
+        <div class="gemini-plan-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
           <button class="btn btn-emerald" onclick="window.safarnamaApp.bookAIPlan()">
             <i class="fa-solid fa-bolt"></i> Book This Trip
           </button>
+          <button class="btn btn-emerald" style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--pk-emerald);" onclick="window.safarnamaApp.navigateTo('home')">
+            <i class="fa-solid fa-house"></i> Go to Home Page
+          </button>
           <button class="btn btn-outline" onclick="window.safarnamaApp.handleGenerateAIPlan()">
-            <i class="fa-solid fa-rotate"></i> Regenerate
+            <i class="fa-solid fa-rotate"></i> Regenerate Plan
           </button>
           <button class="btn btn-outline" onclick="window.safarnamaApp.printGeminiPlan()">
             <i class="fa-solid fa-print"></i> Save / Print
@@ -2257,6 +3022,9 @@ class SafarNamaApp {
           <i class="fa-solid fa-circle-info"></i>
           Road conditions sourced from NHMP live sensors & SafarNama database. Always verify locally before travel.
         </div>
+
+        <!-- Comprehensive Navigation Hub after plan generation -->
+        ${this.renderPlanNavigationHub(destName)}
       </div>
     `;
   }
@@ -2329,8 +3097,32 @@ class SafarNamaApp {
     const resultBox = document.getElementById('ai-itinerary-result');
     if (!resultBox) return;
 
+    const destName = plan?.destination?.name || plan?.destination || '';
+
     resultBox.innerHTML = `
       <div class="generated-plan-card">
+        <!-- Quick Top Navigation Bar -->
+        <div class="plan-top-nav-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 12px 18px; border-radius: 14px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.1);">
+          <button class="btn btn-sm btn-emerald" style="font-weight: 700; border-radius: 10px;" onclick="window.safarnamaApp.navigateTo('home')">
+            <i class="fa-solid fa-house"></i> Return to Home Page
+          </button>
+          <div style="display: flex; gap: 8px; align-items: center; font-size: 0.82rem; color: #94a3b8; flex-wrap: wrap;">
+            <span>Explore:</span>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('tours')">
+              <i class="fa-solid fa-map-location-dot text-emerald"></i> Tours
+            </button>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('hotels')">
+              <i class="fa-solid fa-hotel text-gold"></i> Hotels
+            </button>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('transport')">
+              <i class="fa-solid fa-truck-monster text-cyan"></i> 4x4 Jeeps
+            </button>
+            <button class="btn btn-xs btn-outline" style="padding: 4px 10px; border-radius: 8px;" onclick="window.safarnamaApp.navigateTo('road-status')">
+              <i class="fa-solid fa-satellite-dish text-ruby"></i> Radar
+            </button>
+          </div>
+        </div>
+
         <div class="plan-header">
           <div class="plan-title-wrap">
             <span class="badge-emerald"><i class="fa-solid fa-check-circle"></i> AI Tailored Itinerary</span>
@@ -2345,9 +3137,14 @@ class SafarNamaApp {
             <div class="budget-label">Estimated Total Budget (PKR)</div>
             <div class="budget-val">${state.formatPrice(plan.estimatedCostPKR)}</div>
             <div class="budget-sub">Includes transport, hotels & guided activities</div>
-            <button class="btn btn-emerald btn-sm" onclick="window.safarnamaApp.bookAIPlan()">
-              <i class="fa-solid fa-bolt"></i> Book This Custom Trip
-            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+              <button class="btn btn-emerald btn-sm" onclick="window.safarnamaApp.bookAIPlan()">
+                <i class="fa-solid fa-bolt"></i> Book Custom Trip
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="window.safarnamaApp.navigateTo('home')">
+                <i class="fa-solid fa-house"></i> Go to Home
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2385,6 +3182,113 @@ class SafarNamaApp {
           <div class="packing-chips">
             ${plan.packingList.map(item => `<span class="chip"><i class="fa-solid fa-check text-emerald"></i> ${item}</span>`).join('')}
           </div>
+        </div>
+
+        <!-- Comprehensive Navigation Hub after plan generation -->
+        ${this.renderPlanNavigationHub(destName)}
+      </div>
+    `;
+  }
+
+  /** Renders a rich navigation and action hub displayed after plan generation */
+  renderPlanNavigationHub(destinationName = '') {
+    const destClean = destinationName ? destinationName.trim() : '';
+    return `
+      <div class="plan-navigation-hub glass-panel" style="margin-top: 28px; padding: 24px 26px; border-radius: 18px; border: 1px solid rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.92) 100%); box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px;">
+          <div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--emerald); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;">
+              <i class="fa-solid fa-compass"></i> Next Steps & Quick Navigation
+            </div>
+            <h3 style="margin: 0; font-size: 1.25rem; color: #fff; font-weight: 800;">
+              Where would you like to go next?
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: #94a3b8; line-height: 1.45;">
+              Your itinerary has been generated. You can return directly to the Home page or jump to any section below.
+            </p>
+          </div>
+          <button class="btn btn-emerald" style="padding: 12px 24px; font-weight: 700; font-size: 0.95rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);" onclick="window.safarnamaApp.navigateTo('home')">
+            <i class="fa-solid fa-house"></i> Return to Home Page
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+          <button class="btn btn-outline" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; border-radius: 14px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); cursor: pointer;" onclick="window.safarnamaApp.navigateTo('home')">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fa-solid fa-house text-emerald" style="font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="display: block; font-size: 0.92rem; color: #fff;">Home Page</strong>
+              <span style="font-size: 0.74rem; color: #94a3b8;">Main dashboard & valleys</span>
+            </div>
+          </button>
+
+          <button class="btn btn-outline" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; border-radius: 14px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); cursor: pointer;" onclick="window.safarnamaApp.navigateTo('tours'); ${destClean ? `setTimeout(() => window.safarnamaApp.handleTourSearchInput('${destClean.replace(/'/g, "\\'")}'), 100);` : ''}">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fa-solid fa-map-location-dot text-emerald" style="font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="display: block; font-size: 0.92rem; color: #fff;">Guided Tours</strong>
+              <span style="font-size: 0.74rem; color: #94a3b8;">${destClean ? `Tours for ${destClean}` : 'All domestic tour packages'}</span>
+            </div>
+          </button>
+
+          <button class="btn btn-outline" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; border-radius: 14px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); cursor: pointer;" onclick="window.safarnamaApp.navigateTo('hotels')">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fa-solid fa-hotel text-gold" style="font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="display: block; font-size: 0.92rem; color: #fff;">Mountain Stays</strong>
+              <span style="font-size: 0.74rem; color: #94a3b8;">Heritage forts, resorts & pods</span>
+            </div>
+          </button>
+
+          <button class="btn btn-outline" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; border-radius: 14px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); cursor: pointer;" onclick="window.safarnamaApp.navigateTo('transport')">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(14, 165, 233, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fa-solid fa-truck-monster text-cyan" style="font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="display: block; font-size: 0.92rem; color: #fff;">4x4 Transport Fleet</strong>
+              <span style="font-size: 0.74rem; color: #94a3b8;">Prados & mountain jeeps</span>
+            </div>
+          </button>
+
+          <button class="btn btn-outline" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; border-radius: 14px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); cursor: pointer;" onclick="window.safarnamaApp.navigateTo('road-status')">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(244, 63, 94, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fa-solid fa-satellite-dish text-ruby" style="font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="display: block; font-size: 0.92rem; color: #fff;">Highway Radar</strong>
+              <span style="font-size: 0.74rem; color: #94a3b8;">Live KKH & mountain passes</span>
+            </div>
+          </button>
+
+          <button class="btn btn-outline" style="padding: 14px 16px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; border-radius: 14px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); cursor: pointer;" onclick="window.safarnamaApp.openFullscreenMap()">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i class="fa-solid fa-expand text-emerald" style="font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="display: block; font-size: 0.92rem; color: #fff;">Interactive Pakistan Map</strong>
+              <span style="font-size: 0.74rem; color: #94a3b8;">Full-screen spatial map</span>
+            </div>
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-emerald btn-sm" onclick="window.safarnamaApp.bookAIPlan()">
+              <i class="fa-solid fa-bolt"></i> Instant Book This Trip
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="const f = document.getElementById('ai-planner-form'); if(f) f.scrollIntoView({behavior:'smooth'});">
+              <i class="fa-solid fa-sliders"></i> Modify Parameters / Plan Another
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.print()">
+              <i class="fa-solid fa-print"></i> Print / Save PDF
+            </button>
+          </div>
+          <button class="btn btn-link btn-sm" style="color: #94a3b8; text-decoration: underline; cursor: pointer;" onclick="window.safarnamaApp.navigateTo('home')">
+            ← Return to Home Page
+          </button>
         </div>
       </div>
     `;
@@ -2729,11 +3633,14 @@ class SafarNamaApp {
             </div>
           </div>
 
-          <div class="dest-modal-footer">
+          <div class="dest-modal-footer" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
             <button class="btn btn-outline" onclick="window.safarnamaApp.closeGenericModal(); window.safarnamaApp.filterToursByDest('${dest.id}')">
               View ${dest.name} Tours
             </button>
-            <button class="btn btn-emerald" onclick="window.safarnamaApp.closeGenericModal(); window.safarnamaApp.navigateTo('ai-planner')">
+            <button class="btn btn-emerald" onclick="window.safarnamaApp.closeGenericModal(); window.safarnamaApp.bookTourForDestination('${dest.id}')">
+              <i class="fa-solid fa-calendar-check"></i> Book Tour to ${dest.name}
+            </button>
+            <button class="btn btn-gold" onclick="window.safarnamaApp.closeGenericModal(); window.safarnamaApp.navigateTo('ai-planner')">
               Plan Custom Itinerary with SafarAI
             </button>
           </div>
@@ -2930,6 +3837,182 @@ class SafarNamaApp {
   filterToursByDest(destId) {
     this.selectedDestinationFilter = destId;
     this.navigateTo('tours');
+  }
+
+  bookCustomCityTour() {
+    const input = document.getElementById('custom-city-tour-input');
+    const cityName = input ? input.value.trim() : '';
+    if (!cityName) {
+      this.showToast({
+        title: "Enter City Name",
+        message: "Please type any city, town, or valley in Pakistan you would like to book a tour for.",
+        type: "info"
+      });
+      if (input) input.focus();
+      return;
+    }
+    this.bookTourForDestination(cityName);
+  }
+
+  bookTourForDestination(destId) {
+    if (!destId) return;
+    const cleanName = destId.toString().trim();
+    if (!cleanName) return;
+    const destIdLower = cleanName.toLowerCase();
+
+    // Check if an existing pre-scheduled tour package matches this destination or title
+    const matchingTour = state.tours.find(t => 
+      (t.destinationId && t.destinationId.toLowerCase() === destIdLower) ||
+      (t.destinationName && t.destinationName.toLowerCase() === destIdLower) ||
+      (t.destinationName && t.destinationName.toLowerCase().includes(destIdLower)) ||
+      (t.title && t.title.toLowerCase().includes(destIdLower))
+    );
+
+    if (matchingTour) {
+      this.showToast({
+        title: `Package Found: ${matchingTour.destinationName}`,
+        message: `Opening instant PKR booking wizard for ${matchingTour.title}.`,
+        type: "booking"
+      });
+      this.openBookingModal('tour', matchingTour.id);
+      return;
+    }
+
+    // Format city name in proper Title Case (e.g. "ziarat" -> "Ziarat", "dera ismail khan" -> "Dera Ismail Khan")
+    const formattedCity = cleanName
+      .split(/[\s-]+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+    const slug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'city';
+
+    // Intelligent regional & geography classifier for authentic itinerary & imagery
+    let detectedRegion = 'Pakistan';
+    const lower = destIdLower;
+    const balochistanCities = ['ziarat', 'gwadar', 'quetta', 'turbat', 'khuzdar', 'chaman', 'zhob', 'sibi', 'hub', 'ormara', 'pasni', 'kund malir', 'lasbela', 'kalat', 'kharan', 'panjgur', 'nushki', 'dalbandin', 'loralai', 'barkhan', 'harnai', 'duki', 'dera bugti', 'kohlu', 'washuk', 'musakhel', 'bela', 'astola'];
+    const kpkCities = ['abbottabad', 'swat', 'kalam', 'malam jabba', 'kumrat', 'chitral', 'naran', 'kaghan', 'shogran', 'mansehra', 'peshawar', 'mardan', 'haripur', 'dir', 'kohat', 'bannu', 'dera ismail khan', 'besham', 'ayubia', 'nathia gali', 'timergara', 'saidu sharif', 'bahrain', 'nowshera'];
+    const gbCities = ['hunza', 'skardu', 'gilgit', 'karimabad', 'passu', 'attabad', 'khunjerab', 'shigar', 'khaplu', 'deosai', 'fairy meadows', 'astore', 'nagar', 'ghizer', 'naltar', 'chilas', 'kachura', 'raikot'];
+    const ajkCities = ['muzaffarabad', 'neelum', 'neelum valley', 'rawalakot', 'mirpur', 'kotli', 'bagh', 'ratti gali', 'sharda', 'kel', 'keran', 'leepa', 'taobat', 'shounter', 'poonch', 'jhelum valley'];
+    const punjabCities = ['lahore', 'rawalpindi', 'islamabad', 'faisalabad', 'multan', 'bahawalpur', 'cholistan', 'gujranwala', 'sialkot', 'chakwal', 'murree', 'bhurban', 'taxila', 'jhelum', 'sargodha', 'sadiqabad', 'rahim yar khan', 'dera ghazi khan', 'chiniot', 'mianwali', 'attock'];
+    const sindhCities = ['karachi', 'hyderabad', 'sukkur', 'larkana', 'nawabshah', 'thatta', 'gorakh hill', 'mirpurkhas', 'badin', 'sehwan', 'khairpur', 'jacobabad', 'shikarpur'];
+
+    if (balochistanCities.some(c => lower.includes(c))) detectedRegion = 'Balochistan';
+    else if (kpkCities.some(c => lower.includes(c))) detectedRegion = 'Khyber Pakhtunkhwa';
+    else if (gbCities.some(c => lower.includes(c))) detectedRegion = 'Gilgit-Baltistan';
+    else if (ajkCities.some(c => lower.includes(c))) detectedRegion = 'Azad Kashmir';
+    else if (punjabCities.some(c => lower.includes(c))) detectedRegion = 'Punjab';
+    else if (sindhCities.some(c => lower.includes(c))) detectedRegion = 'Sindh';
+
+    // Curated high-res hero images matching geographic terrain
+    let heroImage = 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?auto=format&fit=crop&w=800&q=80';
+    if (detectedRegion === 'Balochistan') {
+      heroImage = 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80';
+    } else if (detectedRegion === 'Gilgit-Baltistan') {
+      heroImage = 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?auto=format&fit=crop&w=800&q=80';
+    } else if (detectedRegion === 'Khyber Pakhtunkhwa' || detectedRegion === 'Azad Kashmir') {
+      heroImage = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80';
+    } else {
+      heroImage = 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=800&q=80';
+    }
+
+    const dest = state.destinations.find(d => 
+      d.id.toLowerCase() === destIdLower || 
+      d.name.toLowerCase().includes(destIdLower)
+    ) || {
+      id: slug,
+      name: formattedCity,
+      region: detectedRegion,
+      tagline: `Exclusive Escorted Tour to ${formattedCity}, ${detectedRegion}`,
+      averageTourPrice: 45000,
+      heroImage: heroImage,
+      altitude: detectedRegion === 'Gilgit-Baltistan' ? '2,200 m' : (detectedRegion === 'Khyber Pakhtunkhwa' ? '1,850 m' : (detectedRegion === 'Azad Kashmir' ? '1,620 m' : '750 m')),
+      bestSeason: 'All Year Round',
+      highlights: [`${formattedCity} Landmarks & Bazaars`, 'Scenic Panoramic Viewpoint', 'Local Heritage & Architecture', 'Authentic Food Trail'],
+      rating: 4.9,
+      reviewsCount: 88
+    };
+
+    const synthTour = {
+      id: `tour-${slug}-guided-expedition`,
+      title: `${formattedCity} Guided Discovery & Adventure Expedition`,
+      destinationId: dest.id || slug,
+      destinationName: formattedCity,
+      region: detectedRegion,
+      badge: 'Any-City Tour',
+      category: 'Domestic Guided Tour',
+      image: dest.heroImage || heroImage,
+      durationDays: 4,
+      durationNights: 3,
+      departureCities: ['Islamabad', 'Lahore', 'Karachi', 'Peshawar', 'Quetta', 'Multan', 'Faisalabad'],
+      nextDeparture: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+      totalSeats: 22,
+      availableSeats: 9,
+      pricePKR: dest.averageTourPrice || 45000,
+      originalPricePKR: Math.round((dest.averageTourPrice || 45000) * 1.15),
+      rating: dest.rating || 4.9,
+      reviewsCount: dest.reviewsCount || 110,
+      difficulty: 'Easy to Moderate',
+      groupType: 'Families, Couples & Travelers',
+      transportType: 'Executive AC Grand Cabin / 4x4 Mountain Jeep',
+      hotelCategory: 'Verified 3-4 Star Lodging & Resorts',
+      overview: `Complete, fully escorted tour package to ${formattedCity} (${detectedRegion}). Includes dedicated executive AC transport with licensed mountain chauffeur, verified deluxe lodging, daily breakfasts and dinners, escorted excursions, and domestic tourism insurance coverage.`,
+      itinerary: [
+        {
+          day: 1,
+          title: `Departure to ${formattedCity} with Highway Rest Stops`,
+          stops: ['Departure from chosen city', 'Scenic highway transit & refreshment stop', `Arrival in ${formattedCity} & Hotel Check-in`],
+          stay: `${formattedCity} Verified Deluxe Hotel`,
+          meals: 'Traditional Welcome Dinner'
+        },
+        {
+          day: 2,
+          title: `Full-Day Guided Exploration of ${formattedCity}`,
+          stops: dest.highlights && dest.highlights.length > 0 ? dest.highlights.slice(0, 3) : [`${formattedCity} Historic Center`, 'Scenic Viewpoint', 'Traditional Bazaar Walk'],
+          stay: `${formattedCity} Verified Deluxe Hotel`,
+          meals: 'Breakfast & Traditional Local Gourmet Dinner'
+        },
+        {
+          day: 3,
+          title: `Nature Excursions, Heritage & Cultural Immersion`,
+          stops: [`Scenic Surroundings of ${formattedCity}`, 'Artisan & Craft Market', 'Evening Bonfire with Local Refreshments'],
+          stay: `${formattedCity} Verified Deluxe Hotel`,
+          meals: 'Breakfast & BBQ Dinner with Bonfire'
+        },
+        {
+          day: 4,
+          title: `Farewell & Safe Return Drive`,
+          stops: ['Souvenir shopping', 'Scenic return transit', 'Drop-off at departure city'],
+          stay: 'Trip Conclusion',
+          meals: 'Breakfast'
+        }
+      ],
+      inclusions: [
+        `Executive AC transport with professional driver to and from ${formattedCity}`,
+        '3 Nights Deluxe Hotel Accommodation on Twin/Double Sharing',
+        'Daily Quality Breakfasts & Traditional Gourmet Dinners',
+        'Licensed Tour Escort & Local Destination Guide',
+        'All highway tolls, permits and checkpoint clearances'
+      ],
+      exclusions: ['Personal snacks & lunches', 'Private adventure sports / gear rentals'],
+      gearChecklist: ['Comfortable walking shoes', 'Weather-appropriate clothing', 'Original CNIC / Passport', 'Power bank & phone camera']
+    };
+
+    // Replace or add the synthetic tour to state
+    const existingIdx = state.tours.findIndex(t => t.id === synthTour.id);
+    if (existingIdx >= 0) {
+      state.tours[existingIdx] = synthTour;
+    } else {
+      state.tours.unshift(synthTour);
+    }
+    state.save('safarnama_tours_v1', state.tours);
+    state.dispatch('tours_changed', state.tours);
+
+    this.showToast({
+      title: `Tour Ready: ${formattedCity}! 🇵🇰`,
+      message: `Verified tour package to ${formattedCity} generated. Select date & travelers to proceed.`,
+      type: "booking"
+    });
+
+    this.openBookingModal('tour', synthTour.id);
   }
 
   handleTourSearchInput(query) {
@@ -3624,13 +4707,28 @@ class SafarNamaApp {
     // Default 'tours' or 'all'
     const destInput = document.getElementById('search-dest-select');
     const destVal = destInput ? destInput.value.trim() : '';
-    const matched = state.destinations.find(d =>
-      d.id === destVal || d.name.toLowerCase() === destVal.toLowerCase()
-    );
-    this.selectedDestinationFilter = matched ? matched.id : (destVal || 'all');
-    this.customDestinationCity = !matched && destVal ? destVal : null;
-    this.searchQuery = '';
+    if (destVal) {
+      const matched = state.destinations.find(d =>
+        d.id === destVal || d.name.toLowerCase() === destVal.toLowerCase()
+      );
+      if (matched) {
+        this.selectedDestinationFilter = matched.id;
+        this.searchQuery = '';
+      } else {
+        this.selectedDestinationFilter = 'all';
+        this.searchQuery = destVal;
+      }
+    } else {
+      this.selectedDestinationFilter = 'all';
+      this.searchQuery = '';
+    }
     this.navigateTo('tours');
+    setTimeout(() => {
+      const customInp = document.getElementById('custom-city-tour-input');
+      if (customInp && destVal) {
+        customInp.value = destVal;
+      }
+    }, 60);
   }
 
   /** Returns all <option> entries for destination datalists */

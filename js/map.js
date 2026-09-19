@@ -252,17 +252,23 @@ class PakistanTravelMap {
   }
 
   getTileUrl() {
-    const baseUrl = `https://{s}.basemaps.cartocdn.com/rastertiles/${this.style}/{z}/{x}/{y}{r}.png`;
-    return this.apiKey ? `${baseUrl}?key=${encodeURIComponent(this.apiKey)}` : baseUrl;
+    if (this.apiKey) {
+      return `https://{s}.basemaps.cartocdn.com/rastertiles/${this.style}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(this.apiKey)}`;
+    }
+    // Clean, free OpenStreetMap tiles with zero watermark
+    return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   }
 
   updateTileLayer() {
     if (this.tileLayer && this.map) {
       this.map.removeLayer(this.tileLayer);
     }
+    const hasCartoKey = Boolean(this.apiKey);
     this.tileLayer = L.tileLayer(this.getTileUrl(), {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
+      attribution: hasCartoKey
+        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      subdomains: hasCartoKey ? 'abcd' : 'abc',
       maxZoom: 19
     }).addTo(this.map);
   }
@@ -423,7 +429,10 @@ class PakistanTravelMap {
             </div>
             <div class="map-popup-footer">
               <div class="map-price">From <strong>${state.formatPrice(dest.averageTourPrice || 45000)}</strong></div>
-              <button class="btn btn-sm btn-emerald" onclick="window.safarnamaApp.viewDestination('${dest.id}')">Explore Valley</button>
+              <div style="display:flex; gap:6px; margin-top:4px;">
+                <button class="btn btn-sm btn-outline" onclick="window.safarnamaApp.viewDestination('${dest.id}')">Explore</button>
+                <button class="btn btn-sm btn-emerald" onclick="window.safarnamaApp.bookTourForDestination('${dest.id}')"><i class="fa-solid fa-ticket"></i> Book Tour</button>
+              </div>
             </div>
           </div>
         </div>
