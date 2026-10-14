@@ -31,8 +31,8 @@ export default function TransportPage() {
               <span className="dest-badge" style={{ position: 'absolute', top: '12px', left: '12px' }}>
                 {vehicle.category}
               </span>
-              <span className="dest-rating" style={{ position: 'absolute', top: '12px', right: '12px' }}>
-                <i className="fa-solid fa-star text-gold"></i> {vehicle.rating} ({vehicle.tripsCompleted} trips)
+              <span className="dest-badge" style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(15, 23, 42, 0.85)', color: '#38bdf8' }}>
+                <i className="fa-solid fa-users"></i> {vehicle.capacity}
               </span>
             </div>
 

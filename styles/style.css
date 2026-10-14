@@ -23,11 +23,8 @@ html {
 
 body {
   font-family: var(--font-body);
-  background-color: var(--bg-space);
-  background-image:
-    radial-gradient(at 10% 15%, rgba(16, 185, 129, 0.06) 0px, transparent 55%),
-    radial-gradient(at 90% 25%, rgba(14, 165, 233, 0.05) 0px, transparent 50%);
-  background-attachment: fixed;
+  background-color: var(--bg-page);
+  background-image: none;
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
@@ -38,32 +35,9 @@ body {
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
-[data-theme="dark"] body,
-[data-theme="dark"] {
-  background-image:
-    radial-gradient(at 10% 15%, rgba(16, 185, 129, 0.07) 0px, transparent 55%),
-    radial-gradient(at 90% 25%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
-    radial-gradient(at 50% 65%, rgba(15, 23, 42, 0.95) 0px, transparent 70%),
-    radial-gradient(at 80% 85%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
-}
-
-/* Ambient Background Light Orbs */
+/* Ambient Background Light Orbs - Disabled for Clean Modern UI */
 .bg-ambient-orb {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.65;
-  animation: floatOrb 20s ease-in-out infinite alternate;
-}
-
-.orb-1 {
-  width: 500px;
-  height: 500px;
-  top: -100px;
-  left: 15%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0) 70%);
+  display: none !important;
 }
 
 .orb-2 {
@@ -2022,8 +1996,8 @@ textarea {
 }
 
 .map-search-item-icon.route {
-  background: rgba(139, 92, 246, 0.2);
-  color: #c084fc;
+  background: rgba(13, 148, 136, 0.2);
+  color: #2dd4bf;
 }
 
 .map-search-item-icon.road {
@@ -2069,7 +2043,7 @@ textarea {
 .map-search-badge.destination { background: rgba(16, 185, 129, 0.25); color: #34d399; }
 .map-search-badge.hotel { background: rgba(2, 132, 199, 0.25); color: #38bdf8; }
 .map-search-badge.restaurant { background: rgba(234, 88, 12, 0.25); color: #fb923c; }
-.map-search-badge.route { background: rgba(139, 92, 246, 0.25); color: #c084fc; }
+.map-search-badge.route { background: rgba(13, 148, 136, 0.25); color: #2dd4bf; }
 .map-search-badge.road { background: rgba(245, 158, 11, 0.25); color: #fbbf24; }
 .map-search-badge.city { background: rgba(255, 255, 255, 0.15); color: #e2e8f0; }
 
@@ -2291,8 +2265,8 @@ textarea {
 
 /* Search Focus Pin */
 .search-pin {
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  box-shadow: 0 4px 18px rgba(236, 72, 153, 0.7);
+  background: linear-gradient(135deg, #0d9488, #0284c7);
+  box-shadow: 0 4px 18px rgba(13, 148, 136, 0.5);
   border-color: rgba(255, 255, 255, 0.7);
 }
 
@@ -2301,7 +2275,7 @@ textarea {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: rgba(236, 72, 153, 0.45);
+  background: rgba(13, 148, 136, 0.35);
   animation: pulseAnimation 1.4s infinite;
   z-index: -1;
 }
@@ -5505,7 +5479,7 @@ html, body {
 }
 
 .road-kpi-card.border-left-purple {
-  border-left: 4px solid #a855f7;
+  border-left: 4px solid #0d9488;
 }
 
 .road-kpi-lbl {

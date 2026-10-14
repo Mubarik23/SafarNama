@@ -1,255 +1,378 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import SupabaseConnectionBanner from '../components/SupabaseConnectionBanner';
+import { useRouter } from 'next/navigation';
 import { INITIAL_DESTINATIONS } from '../lib/data/destinations';
-import { INITIAL_TOURS } from '../lib/data/tours';
+import { INITIAL_ROAD_ALERTS } from '../lib/data/roadAlerts';
+import DestinationCard from '../components/DestinationCard';
 
 export default function HomePage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
 
-  const filteredDestinations = INITIAL_DESTINATIONS.filter((d) => {
-    const matchesSearch =
-      d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.region.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.tagline.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      activeCategory === 'all' ||
-      d.category.toLowerCase().includes(activeCategory.toLowerCase());
-    return matchesSearch && matchesCategory;
-  });
+  const categories = [
+    { id: 'all', label: 'All Places', icon: 'fa-globe' },
+    { id: 'Mountains & Valleys', label: 'Mountains & Valleys', icon: 'fa-mountain' },
+    { id: 'Lakes & Waterfalls', label: 'Lakes & Waterfalls', icon: 'fa-water' },
+    { id: 'Northern Areas', label: 'Northern Areas', icon: 'fa-compass' },
+    { id: 'Historical Places', label: 'Historical Places', icon: 'fa-landmark' },
+    { id: 'Cities & Culture', label: 'Cities & Culture', icon: 'fa-city' },
+    { id: 'Resorts & Stays', label: 'Resorts & Stays', icon: 'fa-hotel' },
+  ];
 
-  const featuredTours = INITIAL_TOURS.slice(0, 6);
+  // Search submit handler
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push('/explore');
+    }
+  };
+
+  // Filter destinations for homepage display
+  const displayedDestinations = useMemo(() => {
+    return INITIAL_DESTINATIONS.filter((d) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        d.name.toLowerCase().includes(q) ||
+        d.region.toLowerCase().includes(q) ||
+        (d.tagline && d.tagline.toLowerCase().includes(q));
+
+      let matchesCategory = true;
+      if (activeCategory === 'Mountains & Valleys') {
+        matchesCategory = d.category.includes('Mountain') || d.category.includes('Valley');
+      } else if (activeCategory === 'Lakes & Waterfalls') {
+        matchesCategory =
+          (d.highlights && d.highlights.some((h) => h.toLowerCase().includes('lake') || h.toLowerCase().includes('waterfall'))) ||
+          d.name.toLowerCase().includes('lake');
+      } else if (activeCategory === 'Northern Areas') {
+        matchesCategory = d.region.includes('Gilgit') || d.region.includes('Pakhtunkhwa') || d.region.includes('Kashmir');
+      } else if (activeCategory === 'Historical Places') {
+        matchesCategory = d.category.includes('Cultural') || d.category.includes('Heritage') || d.category.includes('Historic');
+      } else if (activeCategory === 'Cities & Culture') {
+        matchesCategory = d.category.includes('Culture') || d.region.includes('Punjab') || d.region.includes('Sindh');
+      } else if (activeCategory === 'Resorts & Stays') {
+        matchesCategory = true; // Shows destinations with top resorts
+      }
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, activeCategory]);
+
+  const popularDestinations = displayedDestinations.slice(0, 6);
+  const recommendedDestinations = INITIAL_DESTINATIONS.filter((d) => d.featured).slice(0, 3);
+  const roadAlertsSnapshot = INITIAL_ROAD_ALERTS.slice(0, 3);
 
   return (
-    <div className="home-view">
-      {/* Real-time Supabase Integration Banner */}
-      <SupabaseConnectionBanner />
-
-      {/* Hero Section */}
-      <section className="hero-section">
-        <div className="hero-container">
-          <div className="hero-badge">
-            <span className="live-pulsing-dot"></span>
-            <span>Real-Time Pakistan Domestic Travel Ecosystem</span>
-          </div>
-
-          <h1 className="hero-title">
-            Discover Pakistan’s Majestic <br />
-            <span className="text-gradient-emerald">Peaks, Valleys & Seas</span>
-          </h1>
-
-          <p className="hero-subtitle">
-            Instant booking for Hunza, Skardu, Swat, and Fairy Meadows. Live KKH highway road alerts,
-            vetted 4x4 mountain jeeps, authentic PKR rates, and SafarAI trip planning powered by Supabase.
-          </p>
-
-          {/* Quick Search Bar */}
-          <div className="hero-search-glass-card">
-            <div className="search-input-group">
-              <i className="fa-solid fa-magnifying-glass search-icon"></i>
-              <input
-                type="text"
-                className="hero-search-input"
-                placeholder="Search Hunza, Skardu, Deosai, Swat, Gwadar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+    <div className="home-page-container">
+      {/* HERO SECTION */}
+      <section className="yt-hero-section">
+        <div className="container-inner">
+          <div className="yt-hero-content">
+            <div className="yt-hero-badge">
+              <i className="fa-solid fa-compass text-teal"></i>
+              <span>Pakistan Domestic Tourism Platform</span>
             </div>
 
-            <div className="search-category-tabs">
-              {[
-                { id: 'all', label: 'All Places' },
-                { id: 'mountains', label: 'Mountains & Valleys' },
-                { id: 'coastal', label: 'Coastal & Beaches' },
-                { id: 'heritage', label: 'Heritage & Lakes' },
-              ].map((cat) => (
-                <button
-                  key={cat.id}
-                  className={`cat-pill ${activeCategory === cat.id ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(cat.id)}
-                >
-                  {cat.label}
+            <h1 className="yt-hero-title">
+              Pakistan Domestic Travel &amp; Destination Directory
+            </h1>
+
+            <p className="yt-hero-subtitle">
+              Verified road clearance, mountain valleys, alpine lakes, verified stays, and step-by-step itinerary planning across Gilgit-Baltistan, KPK, Azad Kashmir, and Balochistan.
+            </p>
+
+            {/* Prominent Search Bar */}
+            <form onSubmit={handleSearchSubmit} className="yt-hero-search-card">
+              <div className="hero-search-input-wrap">
+                <i className="fa-solid fa-magnifying-glass search-icon"></i>
+                <input
+                  type="text"
+                  className="hero-search-input"
+                  placeholder="Search destinations, valleys, lakes, cities, or resorts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search destinations in Pakistan"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="hero-search-clear"
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                )}
+              </div>
+
+              <div className="hero-search-actions">
+                <button type="submit" className="btn-primary">
+                  <i className="fa-solid fa-compass"></i>
+                  <span>Explore Destinations</span>
                 </button>
+
+                <Link href="/map" className="btn-secondary">
+                  <i className="fa-solid fa-map-location-dot"></i>
+                  <span>Explore Map</span>
+                </Link>
+              </div>
+            </form>
+
+            {/* Quick Core Questions Indicator Strip */}
+            <div className="hero-questions-strip">
+              <Link href="/explore" className="question-pill">
+                <span className="q-tag">Where can I travel?</span>
+                <span className="q-link">Browse 14+ Valleys & Regions &rarr;</span>
+              </Link>
+              <div className="q-divider"></div>
+              <Link href="/map" className="question-pill">
+                <span className="q-tag">How do I find a place?</span>
+                <span className="q-link">Search on Interactive Map &rarr;</span>
+              </Link>
+              <div className="q-divider"></div>
+              <Link href="/trips" className="question-pill">
+                <span className="q-tag">How do I plan my trip?</span>
+                <span className="q-link">Step-by-Step Trip Builder &rarr;</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* DESTINATION DISCOVERY CATEGORIES */}
+      <section className="category-discovery-section">
+        <div className="container-inner">
+          <div className="category-scroll-track" role="tablist" aria-label="Destination Categories">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                role="tab"
+                aria-selected={activeCategory === cat.id}
+                className={`category-pill-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                onClick={() => setActiveCategory(cat.id)}
+              >
+                <i className={`fa-solid ${cat.icon}`}></i>
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* POPULAR DESTINATIONS */}
+      <section className="section-block">
+        <div className="container-inner">
+          <div className="section-header-flex">
+            <div>
+              <div className="badge-subtle">
+                <i className="fa-solid fa-fire text-amber"></i> Top Tourist Places
+              </div>
+              <h2 className="section-heading">Popular Destinations</h2>
+              <p className="section-subtext">
+                Most visited valleys, mountains, and historic regions across Pakistan.
+              </p>
+            </div>
+            <Link href="/explore" className="btn-link-action">
+              <span>View All Destinations ({INITIAL_DESTINATIONS.length})</span>
+              <i className="fa-solid fa-arrow-right"></i>
+            </Link>
+          </div>
+
+          {popularDestinations.length > 0 ? (
+            <div className="destinations-grid">
+              {popularDestinations.map((dest) => (
+                <DestinationCard key={dest.id} destination={dest} />
               ))}
             </div>
-          </div>
-
-          {/* Key Metric Highlights */}
-          <div className="hero-stats-row">
-            <div className="stat-item">
-              <div className="stat-number text-emerald">100%</div>
-              <div className="stat-label">Verified Escrow</div>
+          ) : (
+            <div className="empty-results-box">
+              <i className="fa-solid fa-mountain text-muted"></i>
+              <h3 className="empty-title">No destinations found</h3>
+              <p className="empty-desc">Try another place name or reset your category filter.</p>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveCategory('all');
+                }}
+              >
+                Reset Filters
+              </button>
             </div>
-            <div className="stat-divider"></div>
-            <div className="stat-item">
-              <div className="stat-number text-cyan">24/7</div>
-              <div className="stat-label">Live NHMP Alerts</div>
-            </div>
-            <div className="stat-divider"></div>
-            <div className="stat-item">
-              <div className="stat-number text-gold">4.95 ★</div>
-              <div className="stat-label">Traveler Rating</div>
-            </div>
-            <div className="stat-divider"></div>
-            <div className="stat-item">
-              <div className="stat-number text-emerald">Next.js</div>
-              <div className="stat-label">+ Supabase SSR</div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Destinations Section */}
-      <section className="section-container">
-        <div className="section-header-flex">
-          <div>
-            <div className="badge-subtle">
-              <i className="fa-solid fa-compass text-emerald"></i> Curated Destinations
-            </div>
-            <h2 className="section-title">Explore Northern & Coastal Pakistan</h2>
-          </div>
-          <Link href="/tours" className="btn-glass-sm">
-            View All Tours <i className="fa-solid fa-arrow-right"></i>
-          </Link>
-        </div>
-
-        <div className="destinations-grid">
-          {filteredDestinations.map((dest) => (
-            <div key={dest.id} className="destination-card glass-panel">
-              <div className="dest-image-wrap" style={{ position: 'relative', height: '220px', width: '100%' }}>
-                <Image
-                  src={dest.heroImage}
-                  alt={dest.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  style={{ objectFit: 'cover' }}
-                  priority={dest.featured}
-                />
-                <span className="dest-badge">{dest.badge || dest.region}</span>
-                <span className="dest-rating">
-                  <i className="fa-solid fa-star text-gold"></i> {dest.rating}
-                </span>
+      {/* RECOMMENDED PLACES & HIGHLIGHTS */}
+      <section className="section-block section-alt-bg">
+        <div className="container-inner">
+          <div className="section-header-flex">
+            <div>
+              <div className="badge-subtle">
+                <i className="fa-solid fa-star text-gold"></i> Handpicked For You
               </div>
-              <div className="dest-body">
-                <div className="dest-region text-cyan">{dest.region}</div>
-                <h3 className="dest-title">{dest.name}</h3>
-                <p className="dest-tagline">{dest.tagline}</p>
+              <h2 className="section-heading">Recommended Places to Visit</h2>
+              <p className="section-subtext">
+                Selected for pristine natural beauty, reliable road access, and verified hospitality.
+              </p>
+            </div>
+            <Link href="/map" className="btn-link-action">
+              <span>See on Pakistan Map</span>
+              <i className="fa-solid fa-map-location-dot"></i>
+            </Link>
+          </div>
 
-                <div className="dest-meta-chips">
-                  <span className="meta-chip">
-                    <i className="fa-solid fa-mountain text-emerald"></i> {dest.altitude}
-                  </span>
-                  <span className="meta-chip">
-                    <i className="fa-solid fa-cloud-sun text-cyan"></i> {dest.temperature}
-                  </span>
+          <div className="recommended-grid">
+            {recommendedDestinations.map((place) => (
+              <div key={place.id} className="recommended-card yt-card">
+                <div className="recommended-thumb">
+                  <Image
+                    src={place.heroImage}
+                    alt={place.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    style={{ objectFit: 'cover' }}
+                  />
+                  <span className="recommended-badge">{place.badge || 'Recommended'}</span>
                 </div>
-
-                <div className="dest-footer">
-                  <div className="dest-price-box">
-                    <span className="price-label">From</span>
-                    <span className="price-amount text-emerald">
-                      PKR {dest.averageTourPrice.toLocaleString()}
-                    </span>
+                <div className="recommended-body">
+                  <div className="recommended-region text-teal">
+                    <i className="fa-solid fa-location-dot"></i> {place.region}
                   </div>
-                  <Link href={`/tours`} className="btn-primary-sm">
-                    Book Trip
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Featured Tour Packages */}
-      <section className="section-container">
-        <div className="section-header-flex">
-          <div>
-            <div className="badge-subtle">
-              <i className="fa-solid fa-ticket text-emerald"></i> Fixed & Custom Departures
-            </div>
-            <h2 className="section-title">Featured Tour Packages</h2>
-          </div>
-          <Link href="/tours" className="btn-glass-sm">
-            All Packages ({INITIAL_TOURS.length}) <i className="fa-solid fa-arrow-right"></i>
-          </Link>
-        </div>
-
-        <div className="tours-grid">
-          {featuredTours.map((tour) => (
-            <div key={tour.id} className="tour-card glass-panel">
-              <div className="tour-image-wrap" style={{ position: 'relative', height: '200px', width: '100%' }}>
-                <Image
-                  src={tour.image}
-                  alt={tour.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  style={{ objectFit: 'cover' }}
-                />
-                <span className="tour-category-badge">{tour.category}</span>
-                <span className="tour-duration-badge">
-                  <i className="fa-solid fa-clock"></i> {tour.durationDays}D / {tour.durationNights}N
-                </span>
-              </div>
-
-              <div className="tour-body">
-                <div className="tour-departure-city">
-                  <i className="fa-solid fa-location-dot text-emerald"></i> Departs: {(tour.departureCities || ['Islamabad']).slice(0, 2).join(', ')}
-                </div>
-                <h3 className="tour-title">{tour.title}</h3>
-                <p className="tour-snippet">{tour.overview}</p>
-
-                <div className="tour-highlights-chips">
-                  {(tour.inclusions || tour.highlights || []).slice(0, 3).map((hl, i) => (
-                    <span key={i} className="highlight-pill">
-                      ✓ {hl}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="tour-card-footer">
-                  <div className="tour-pricing">
-                    <span className="pricing-sub">Total per person</span>
-                    <span className="pricing-val text-emerald">
-                      PKR {tour.pricePKR.toLocaleString()}
-                    </span>
+                  <h3 className="recommended-title">{place.name}</h3>
+                  <p className="recommended-tagline">{place.tagline}</p>
+                  
+                  <div className="recommended-meta-row">
+                    <span><i className="fa-solid fa-mountain"></i> {place.altitude}</span>
+                    <span><i className="fa-solid fa-sun"></i> {place.bestSeason}</span>
                   </div>
-                  <Link href="/tours" className="btn-primary-sm">
-                    View Dates & Itinerary
-                  </Link>
+
+                  <div className="recommended-footer">
+                    <Link href={`/destinations/${place.id}`} className="btn-primary-sm btn-full">
+                      View Destination Guide
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* SafarAI Promo Banner */}
-      <section className="section-container">
-        <div className="ai-cta-banner glass-panel">
-          <div className="ai-cta-content">
-            <div className="badge-subtle" style={{ color: '#38bdf8', borderColor: 'rgba(56,189,248,0.3)' }}>
-              <i className="fa-solid fa-wand-magic-sparkles text-cyan"></i> SafarAI Smart Assistant
+      {/* HOW TO PLAN YOUR TRIP: 3-STEP INTUITIVE WORKFLOW */}
+      <section className="section-block">
+        <div className="container-inner">
+          <div className="planning-guide-card">
+            <div className="badge-subtle">
+              <i className="fa-solid fa-route text-teal"></i> Simple Travel Guide
             </div>
-            <h2 className="ai-cta-title">
-              Generate a Tailored Pakistan Itinerary in 5 Seconds
+            <h2 className="section-heading" style={{ marginBottom: '12px' }}>
+              How to Plan Your Pakistan Trip with SafarNama PK
             </h2>
-            <p className="ai-cta-text">
-              Tell SafarAI your departure city, family size, dates, and budget. Our Gemini & Supabase powered
-              engine crafts full day-by-day itineraries with live road advisories.
+            <p className="section-subtext" style={{ maxWidth: '640px', margin: '0 auto 36px' }}>
+              Follow three simple steps to discover places, check real highway alerts, and organize your journey.
             </p>
-            <div className="ai-cta-actions">
-              <Link href="/ai-planner" className="btn-primary">
-                <i className="fa-solid fa-wand-magic-sparkles"></i> Launch SafarAI Planner
-              </Link>
-              <Link href="/road-status" className="btn-glass">
-                <i className="fa-solid fa-triangle-exclamation text-gold"></i> Check Road Status First
-              </Link>
+
+            <div className="planning-steps-grid">
+              <div className="planning-step-item">
+                <div className="step-circle-icon text-teal">
+                  <i className="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <div className="step-number-tag">Step 1</div>
+                <h3 className="step-item-title">Discover a Destination</h3>
+                <p className="step-item-desc">
+                  Browse Hunza, Skardu, Swat, Fairy Meadows, or coastal Gwadar. Save the places you love with one click.
+                </p>
+                <Link href="/explore" className="step-link">
+                  Browse Places &rarr;
+                </Link>
+              </div>
+
+              <div className="planning-step-item">
+                <div className="step-circle-icon text-amber">
+                  <i className="fa-solid fa-shield-halved"></i>
+                </div>
+                <div className="step-number-tag">Step 2</div>
+                <h3 className="step-item-title">Check Highway Status</h3>
+                <p className="step-item-desc">
+                  View live clearance on KKH, Babusar Pass, Jaglot-Skardu, and Lowari Tunnel verified by NHMP before traveling.
+                </p>
+                <Link href="/road-status" className="step-link">
+                  Check Road Alerts &rarr;
+                </Link>
+              </div>
+
+              <div className="planning-step-item">
+                <div className="step-circle-icon text-cyan">
+                  <i className="fa-solid fa-calendar-check"></i>
+                </div>
+                <div className="step-number-tag">Step 3</div>
+                <h3 className="step-item-title">Build Your Itinerary</h3>
+                <p className="step-item-desc">
+                  Organize daily stops, estimate realistic local PKR costs, and export or print your customized travel plan.
+                </p>
+                <Link href="/trips" className="step-link">
+                  Start Planning &rarr;
+                </Link>
+              </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* USEFUL TRAVEL INFORMATION & HIGHWAY UPDATES SNAPSHOT */}
+      <section className="section-block section-alt-bg">
+        <div className="container-inner">
+          <div className="section-header-flex">
+            <div>
+              <div className="badge-subtle">
+                <i className="fa-solid fa-satellite-dish text-emerald"></i> Verified NHMP Feed
+              </div>
+              <h2 className="section-heading">Live Northern Highway Surveillance</h2>
+              <p className="section-subtext">
+                Real-time transit clearance for major northern corridors and mountain passes.
+              </p>
+            </div>
+            <Link href="/road-status" className="btn-link-action">
+              <span>View All 7 Highways</span>
+              <i className="fa-solid fa-arrow-right"></i>
+            </Link>
+          </div>
+
+          <div className="road-snapshot-grid">
+            {roadAlertsSnapshot.map((alert) => {
+              const isOpen = alert.statusLevel === 'success' || alert.status.includes('OPEN');
+              return (
+                <div key={alert.id} className="road-snapshot-card yt-card">
+                  <div className="road-snapshot-top">
+                    <span className={`status-pill ${isOpen ? 'open' : 'caution'}`}>
+                      {isOpen ? 'OPEN' : alert.status}
+                    </span>
+                    <span className="road-weather-pill">
+                      <i className="fa-solid fa-cloud-sun text-cyan"></i> {alert.weather}
+                    </span>
+                  </div>
+                  <h3 className="road-snapshot-title">{alert.highway}</h3>
+                  <p className="road-snapshot-section">{alert.section}</p>
+                  <p className="road-snapshot-advisory">{alert.advisory}</p>
+                  <div className="road-snapshot-footer">
+                    <span className="freshness-text">
+                      <i className="fa-regular fa-clock"></i> {alert.lastUpdated || 'Verified recently'}
+                    </span>
+                    <Link href="/road-status" className="btn-link-sm">
+                      Details &gt;
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

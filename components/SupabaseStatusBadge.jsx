@@ -17,6 +17,16 @@ export default function SupabaseStatusBadge() {
         const supabase = createClient();
         const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         
+        if (!supabase) {
+          setStatus({
+            loading: false,
+            connected: false,
+            message: 'Local Dataset Mode',
+            projectUrl: 'offline'
+          });
+          return;
+        }
+
         // Ping session or auth settings to verify Supabase connectivity
         const { data, error } = await supabase.auth.getSession();
         

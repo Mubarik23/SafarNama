@@ -11,6 +11,15 @@ export default function SupabaseConnectionBanner() {
     setTesting(true);
     try {
       const supabase = createClient();
+      if (!supabase) {
+        setTestResult({
+          success: true,
+          message: 'Running in Local Dataset Mode (Supabase optional)',
+          latency: '< 1ms',
+          session: 'Guest / Anonymous'
+        });
+        return;
+      }
       const startTime = performance.now();
       const { data, error } = await supabase.auth.getSession();
       const duration = Math.round(performance.now() - startTime);
@@ -52,7 +61,7 @@ export default function SupabaseConnectionBanner() {
         </div>
         <div>
           <div className="supabase-banner-title">
-            <span>Next.js App Router 🤝 Supabase Active</span>
+            <span>Next.js App Router &amp; Supabase Active</span>
             <span className="badge-subtle" style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.4)' }}>
               Project: mwrkvzcbjrchtmallzml
             </span>

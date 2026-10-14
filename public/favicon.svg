@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="pkGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#044e45" />
+      <stop offset="100%" stop-color="#0d766e" />
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Square (6px radius, no pill) -->
+  <rect width="64" height="64" rx="10" fill="url(#pkGreen)" />
+  
+  <!-- Outer Border -->
+  <rect x="1" y="1" width="62" height="62" rx="9" fill="none" stroke="#14b8a6" stroke-width="1.5" stroke-opacity="0.4" />
+  
+  <!-- Subtle Moon / Sun Crescent Dot -->
+  <circle cx="44" cy="20" r="5" fill="#fef08a" />
+  
+  <!-- Mountain Peaks (Geometric, Clean, Authentic) -->
+  <!-- Back Peak -->
+  <polygon points="34,16 48,42 20,42" fill="#0f766e" opacity="0.7" />
+  <!-- Front Peaks -->
+  <polygon points="24,24 38,48 10,48" fill="#14b8a6" />
+  <polygon points="40,28 54,48 26,48" fill="#2dd4bf" opacity="0.9" />
+  <!-- Snowcaps -->
+  <polygon points="24,24 28,32 20,32" fill="#ffffff" />
+  <polygon points="40,28 44,35 36,35" fill="#ffffff" />
+  
+  <!-- Ground Horizon Bar -->
+  <rect x="8" y="47" width="48" height="3" rx="1.5" fill="#f8fafc" opacity="0.9" />
+</svg>
